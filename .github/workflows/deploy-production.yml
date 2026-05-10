@@ -66,12 +66,7 @@ jobs:
           sleep 15
           curl -f https://api.apppresente.com.br/health || exit 1
 
-      - name: Deploy do Web em Produção (Vercel)
-        run: npx vercel --token=${{ secrets.VERCEL_TOKEN }} --prod
-        env:
-          VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: apps/web
+      # Frontend deployado automaticamente pela integração GitHub-Vercel
 
       - name: Cria GitHub Release
         uses: softprops/action-gh-release@v2

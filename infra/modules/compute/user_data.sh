@@ -42,10 +42,7 @@ echo "[deploy] Atualizando serviço..."
 cd /opt/presente
 API_IMAGE="$ECR_REGISTRY/presente/api:$IMAGE_TAG" docker compose -f docker-compose.yml up -d api
 
-echo "[deploy] Rodando migrações..."
-docker compose -f docker-compose.yml exec -T api sh -c "cd /app/apps/api && npx prisma migrate deploy"
-
-echo "[deploy] Concluído!"
+echo "[deploy] Concluído! (migrações rodam no entrypoint do container)"
 DEPLOY
 
 chmod +x /opt/presente/deploy.sh

@@ -34,16 +34,19 @@ COPY --from=builder /app/packages/shared ./packages/shared
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/api/entrypoint.sh ./apps/api/entrypoint.sh
 COPY --from=builder /app/node_modules ./node_modules
 
 # Recria node_modules do workspace de produção (sem devDeps)
 RUN npm ci --workspace=apps/api --workspace=packages/shared --omit=dev --ignore-scripts
 
-# Copia Prisma client gerado
+# Copia Prisma client gerado + CLI (necessário para migrate deploy no entrypoint)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+
+RUN chmod +x /app/apps/api/entrypoint.sh
 
 EXPOSE 3001
 
-# dumb-init garante tratamento correto de sinais (graceful shutdown)
-CMD ["dumb-init", "node", "apps/api/dist/app.js"]
+CMD ["/app/apps/api/entrypoint.sh"]

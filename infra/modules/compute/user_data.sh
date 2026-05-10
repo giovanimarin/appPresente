@@ -40,10 +40,10 @@ docker pull "$ECR_REGISTRY/presente/api:$IMAGE_TAG"
 
 echo "[deploy] Atualizando serviço..."
 cd /opt/presente
-API_IMAGE="$ECR_REGISTRY/presente/api:$IMAGE_TAG" docker compose -f docker-compose.yml up -d --no-deps api
+API_IMAGE="$ECR_REGISTRY/presente/api:$IMAGE_TAG" docker compose -f docker-compose.yml up -d api
 
 echo "[deploy] Rodando migrações..."
-docker compose -f docker-compose.yml exec -T api npx prisma migrate deploy
+docker compose -f docker-compose.yml exec -T api sh -c "cd /app/apps/api && npx prisma migrate deploy"
 
 echo "[deploy] Concluído!"
 DEPLOY

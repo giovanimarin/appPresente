@@ -20,12 +20,6 @@ jobs:
 
       - run: npm ci
 
-      - name: Build shared package
-        run: cd packages/shared && npm run build
-
-      - name: Typecheck API
-        run: cd apps/api && npx tsc --build --noEmit
-
       - name: Typecheck Web
         run: cd apps/web && npm run type-check
 

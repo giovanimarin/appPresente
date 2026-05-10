@@ -20,11 +20,14 @@ jobs:
 
       - run: npm ci
 
+      - name: Build shared package
+        run: cd packages/shared && npm run build
+
       - name: Lint API
         run: cd apps/api && npm run lint
 
       - name: Typecheck API
-        run: cd apps/api && npx tsc --noEmit
+        run: cd apps/api && npx tsc --build --noEmit
 
       - name: Typecheck Web
         run: cd apps/web && npm run type-check
@@ -123,6 +126,9 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+
+      - name: Build shared package
+        run: cd packages/shared && npm run build
 
       - name: Gera Prisma Client
         run: cd apps/api && npx prisma generate

@@ -61,8 +61,8 @@ jobs:
 
       - name: Smoke test
         run: |
-          sleep 10
-          curl -f https://staging-api.apppresente.com.br/health || exit 1
+          sleep 15
+          curl -f http://${{ secrets.STAGING_HOST }}:3001/health || exit 1
 
       - name: Deploy do Web (Vercel)
         run: npx vercel --token=${{ secrets.VERCEL_TOKEN }} --prod=false

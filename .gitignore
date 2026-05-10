@@ -1,0 +1,35 @@
+node_modules/
+dist/
+.env
+*.env.local
+.DS_Store
+*.log
+coverage/
+.nyc_output/
+*.db
+.next/
+out/
+build/
+
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+.terraform.lock.hcl
+infra/**/.terraform.lock.hcl
+terraform.tfvars
+infra/environments/*/terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Secrets / credenciais locais
+.env.production
+.env.staging
+infra/environments/*/secrets.auto.tfvars

@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: presente_postgres
+    environment:
+      POSTGRES_USER: presente
+      POSTGRES_PASSWORD: presente_dev_pass
+      POSTGRES_DB: presente_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U presente']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: presente_redis
+    ports:
+      - '6379:6379'
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: presente_minio
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: presente_minio
+      MINIO_ROOT_PASSWORD: presente_minio_secret
+    ports:
+      - '9000:9000'   # S3 API
+      - '9001:9001'   # Console web
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cria o bucket automaticamente na inicialização
+  minio-init:
+    image: minio/mc:latest
+    container_name: presente_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 presente_minio presente_minio_secret;
+      mc mb --ignore-existing local/presente-local;
+      mc anonymous set download local/presente-local;
+      echo 'MinIO bucket criado com sucesso';
+      "
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

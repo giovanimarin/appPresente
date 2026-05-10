@@ -1,0 +1,721 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  SECRETARY
+  COORDINATOR
+  TEACHER
+}
+
+enum PlanType {
+  STARTER
+  SCHOOL
+  NETWORK
+  ENTERPRISE
+}
+
+enum SchoolCommType {
+  NOTICE
+  URGENT
+  INFORMATIVE
+  DOCUMENT
+  PHOTO
+  EXAM
+  MEETING
+}
+
+enum GuardianCommType {
+  ABSENCE
+  MEDICAL_CERT
+  EARLY_DEPARTURE
+}
+
+enum CommScope {
+  CLASS
+  STUDENT
+}
+
+enum SchoolCommStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+enum GuardianCommStatus {
+  SENT
+  RECEIVED
+  UNDER_REVIEW
+  RESOLVED
+}
+
+enum LinkStatus {
+  PENDING_INVITE
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+}
+
+// ── 0. Platform Users (Donos do SaaS) ─────────────────────────────────────
+
+model PlatformUser {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String    @db.VarChar(200)
+  email        String    @unique @db.VarChar(200)
+  passwordHash String    @map("password_hash")
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("platform_users")
+}
+
+// ── 1. Schools ────────────────────────────────────────────────────────────
+
+model School {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String    @db.VarChar(200)
+  cnpj        String?   @unique @db.VarChar(18)
+  logoUrl     String?   @map("logo_url")
+  address     String?   @db.VarChar(300)
+  city        String?   @db.VarChar(100)
+  state       String?   @db.Char(2)
+  phone       String?   @db.VarChar(20)
+  email       String?   @db.VarChar(200)
+  plan           PlanType  @default(STARTER)
+  trialEndsAt    DateTime? @map("trial_ends_at")
+  active         Boolean   @default(true)
+  suspendedAt    DateTime? @map("suspended_at")
+  suspendedBy    String?   @map("suspended_by") @db.VarChar(200) // plataforma ID
+  platformNote   String?   @map("platform_note") // nota interna do dono do SaaS
+  maxStudents    Int?      @map("max_students")   // override do limite do plano
+  billingEmail   String?   @map("billing_email") @db.VarChar(200)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  units               SchoolUnit[]
+  users               User[]
+  classes             Class[]
+  students            Student[]
+  guardians           Guardian[]
+  communications      Communication[]
+  agendaEvents        AgendaEvent[]
+  forms               Form[]
+  attachments         Attachment[]
+  guardianPreferences GuardianSchoolPreference[]
+  appointmentSlots    AppointmentSlot[]
+
+  @@map("schools")
+}
+
+// ── 1a. School Units ──────────────────────────────────────────────────────
+
+model SchoolUnit {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId String  @map("school_id") @db.Uuid
+  name     String  @db.VarChar(200)
+  address  String? @db.VarChar(300)
+  city     String? @db.VarChar(100)
+  state    String? @db.Char(2)
+  phone    String? @db.VarChar(20)
+  active   Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes Class[]
+  users   User[]
+
+  @@map("school_units")
+}
+
+// ── 2. Users (Staff) ──────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId     String    @map("school_id") @db.Uuid
+  unitId       String?   @map("unit_id") @db.Uuid
+  name         String    @db.VarChar(200)
+  email        String    @db.VarChar(200)
+  passwordHash String    @map("password_hash")
+  role         UserRole
+  phone        String?   @db.VarChar(20)
+  avatarUrl    String?   @map("avatar_url")
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  school School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  unit   SchoolUnit? @relation(fields: [unitId], references: [id])
+
+  // Como coordinator
+  coordinatorTeachers CoordinatorTeacher[] @relation("CoordinatorRelation")
+  // Como teacher
+  teacherCoordinators CoordinatorTeacher[] @relation("TeacherRelation")
+  classTeachers       ClassTeacher[]
+
+  // Comunicados criados
+  createdCommunications Communication[] @relation("CommunicationCreatedBy")
+  cancelledCommunications Communication[] @relation("CommunicationCancelledBy")
+  resolvedCommunications  Communication[] @relation("CommunicationResolvedBy")
+  deliveryLogs            CommunicationDeliveryLog[] @relation("DeliveryTriggeredBy")
+
+  // Turmas coordenadas
+  coordinatedClasses Class[]
+
+  // Vínculos aprovados
+  approvedLinks StudentGuardian[]
+
+  // Agenda
+  createdEvents   AgendaEvent[] @relation("EventCreatedBy")
+  cancelledEvents AgendaEvent[] @relation("EventCancelledBy")
+
+  // Forms
+  createdForms       Form[]
+  resolvedSubmissions FormSubmission[] @relation("SubmissionResolvedBy")
+
+  // Agendamentos
+  appointmentSlots AppointmentSlot[] @relation("SlotCreatedBy")
+
+  @@unique([email, schoolId])
+  @@index([schoolId, role], name: "idx_users_school")
+  @@map("users")
+}
+
+// ── 3. Coordinator-Teacher Link ──────────────────────────────────────────
+
+model CoordinatorTeacher {
+  coordinatorId String   @map("coordinator_id") @db.Uuid
+  teacherId     String   @map("teacher_id") @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  assignedAt    DateTime @default(now()) @map("assigned_at")
+
+  coordinator User @relation("CoordinatorRelation", fields: [coordinatorId], references: [id])
+  teacher     User @relation("TeacherRelation", fields: [teacherId], references: [id])
+
+  @@id([coordinatorId, teacherId])
+  @@unique([teacherId, schoolId])
+  @@index([teacherId], name: "idx_ct_teacher")
+  @@map("coordinator_teachers")
+}
+
+// ── 4. Classes ────────────────────────────────────────────────────────────
+
+model Class {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId      String  @map("school_id") @db.Uuid
+  unitId        String? @map("unit_id") @db.Uuid
+  coordinatorId String? @map("coordinator_id") @db.Uuid
+  name          String  @db.VarChar(100)
+  grade         String? @db.VarChar(50)
+  shift         String? @db.VarChar(20)
+  year          Int?
+  room          String? @db.VarChar(20)
+  active        Boolean @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  unit        SchoolUnit? @relation(fields: [unitId], references: [id])
+  coordinator User?       @relation(fields: [coordinatorId], references: [id])
+
+  students         Student[]
+  classTeachers    ClassTeacher[]
+  commClasses      CommunicationClass[]
+  eventClasses     AgendaEventClass[]
+  appointmentSlots AppointmentSlot[]
+
+  @@index([schoolId, active], name: "idx_classes_school")
+  @@index([coordinatorId], name: "idx_classes_coordinator")
+  @@map("classes")
+}
+
+// ── 5. Class-Teacher Link ─────────────────────────────────────────────────
+
+model ClassTeacher {
+  classId    String  @map("class_id") @db.Uuid
+  teacherId  String  @map("teacher_id") @db.Uuid
+  schoolId   String  @map("school_id") @db.Uuid
+  subject    String? @db.VarChar(100)
+  isHomeroom Boolean @default(false) @map("is_homeroom")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  class   Class @relation(fields: [classId], references: [id])
+  teacher User  @relation(fields: [teacherId], references: [id])
+
+  @@id([classId, teacherId])
+  @@index([teacherId], name: "idx_clst_teacher")
+  @@map("class_teachers")
+}
+
+// ── 6. Students ───────────────────────────────────────────────────────────
+
+model Student {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId       String  @map("school_id") @db.Uuid
+  classId        String? @map("class_id") @db.Uuid
+  name           String  @db.VarChar(200)
+  enrollmentCode String? @map("enrollment_code") @db.VarChar(50)
+  birthDate      DateTime? @map("birth_date") @db.Date
+  gender         String? @db.VarChar(20)
+  notes          String?
+  photoUrl       String? @map("photo_url")
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class  Class?  @relation(fields: [classId], references: [id])
+
+  studentGuardians    StudentGuardian[]
+  commStudents        CommunicationStudent[]
+  communicationReads  CommunicationRead[]
+  formSubmissions     FormSubmission[]
+  appointmentSlots    AppointmentSlot[]
+  appointmentBookings AppointmentBooking[]
+
+  @@unique([enrollmentCode, schoolId])
+  @@index([schoolId, active], name: "idx_students_school")
+  @@index([classId], name: "idx_students_class")
+  @@map("students")
+}
+
+// ── 7. Guardians ─────────────────────────────────────────────────────────
+
+model Guardian {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String    @map("school_id") @db.Uuid
+  name        String    @db.VarChar(200)
+  cpf         String?   @unique @db.VarChar(11) @map("cpf")
+  phone       String    @unique @db.VarChar(20)
+  email       String?   @db.VarChar(200)
+  pushToken   String?   @map("push_token")
+  deviceType  String?   @map("device_type") @db.VarChar(10)
+  avatarUrl    String?   @map("avatar_url")
+  passwordHash String?   @map("password_hash")
+  active       Boolean   @default(true)
+  activatedAt  DateTime? @map("activated_at")
+  lastSeenAt   DateTime? @map("last_seen_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentGuardians    StudentGuardian[] @relation("GuardianRelation")
+  invitedLinks        StudentGuardian[] @relation("InvitedByRelation")
+  communications      Communication[]
+  communicationReads  CommunicationRead[]
+  notifications       GuardianNotification[]
+  deliveryLogs        CommunicationDeliveryLog[]
+  formSubmissions     FormSubmission[]
+  schoolPreferences   GuardianSchoolPreference[]
+  appointmentBookings AppointmentBooking[]
+
+  @@index([phone], name: "idx_guardians_phone")
+  @@index([cpf], name: "idx_guardians_cpf")
+  @@map("guardians")
+}
+
+// ── 7a. Guardian ↔ School preference (multi-escola) ──────────────────────
+
+model GuardianSchoolPreference {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  guardianId String  @map("guardian_id") @db.Uuid
+  schoolId   String  @map("school_id") @db.Uuid
+  color      String  @default("#6366f1") @db.VarChar(7)
+  nickname   String? @db.VarChar(100)
+
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, schoolId])
+  @@map("guardian_school_preferences")
+}
+
+// ── 8. Student-Guardian Link ──────────────────────────────────────────────
+
+model StudentGuardian {
+  studentId    String     @map("student_id") @db.Uuid
+  guardianId   String     @map("guardian_id") @db.Uuid
+  schoolId     String     @map("school_id") @db.Uuid
+  relationship String     @db.VarChar(50)
+  isPrimary    Boolean    @default(false) @map("is_primary")
+  status       LinkStatus @default(PENDING_INVITE)
+  invitedBy    String?    @map("invited_by") @db.Uuid
+  invitedAt    DateTime?  @map("invited_at")
+  activatedAt  DateTime?  @map("activated_at")
+  approvedBy   String?    @map("approved_by") @db.Uuid
+  approvedAt   DateTime?  @map("approved_at")
+
+  student    Student   @relation(fields: [studentId], references: [id])
+  guardian   Guardian  @relation("GuardianRelation", fields: [guardianId], references: [id])
+  inviter    Guardian? @relation("InvitedByRelation", fields: [invitedBy], references: [id])
+  approver   User?     @relation(fields: [approvedBy], references: [id])
+
+  @@id([studentId, guardianId])
+  @@index([guardianId, status], name: "idx_sg_guardian")
+  @@index([studentId, status], name: "idx_sg_student")
+  @@map("student_guardians")
+}
+
+// ── 9. Communications ─────────────────────────────────────────────────────
+
+model Communication {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId String @map("school_id") @db.Uuid
+
+  // Autor (mutuamente exclusivos)
+  createdBy  String? @map("created_by") @db.Uuid
+  guardianId String? @map("guardian_id") @db.Uuid
+
+  // Tipo (mutuamente exclusivos)
+  schoolType   SchoolCommType?   @map("school_type")
+  guardianType GuardianCommType? @map("guardian_type")
+
+  // Conteúdo
+  title String @db.VarChar(300)
+  body  String
+
+  // Alcance
+  scope CommScope
+
+  // Status
+  schoolStatus   SchoolCommStatus?   @map("school_status")
+  guardianStatus GuardianCommStatus? @map("guardian_status")
+
+  // Confirmação
+  requiresConfirmation Boolean @default(true) @map("requires_confirmation")
+  protocolNumber       String? @unique @map("protocol_number") @db.VarChar(30)
+  internalNote         String? @map("internal_note")
+  resolvedAt           DateTime? @map("resolved_at")
+  resolvedBy           String?   @map("resolved_by") @db.Uuid
+
+  // Lembretes
+  autoReminder  Boolean @default(true) @map("auto_reminder")
+  reminderCount Int     @default(0) @map("reminder_count")
+
+  // Data do evento (para EXAM e MEETING)
+  eventDate   DateTime? @map("event_date")
+
+  // Agendamento
+  scheduledAt DateTime? @map("scheduled_at")
+  sentAt      DateTime? @map("sent_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  cancelledBy String?   @map("cancelled_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author      User?     @relation("CommunicationCreatedBy", fields: [createdBy], references: [id])
+  guardian    Guardian? @relation(fields: [guardianId], references: [id])
+  cancelledByUser User? @relation("CommunicationCancelledBy", fields: [cancelledBy], references: [id])
+  resolvedByUser  User? @relation("CommunicationResolvedBy", fields: [resolvedBy], references: [id])
+
+  commClasses   CommunicationClass[]
+  commStudents  CommunicationStudent[]
+  reads         CommunicationRead[]
+  attachments   Attachment[]
+  notifications GuardianNotification[]
+  deliveryLogs  CommunicationDeliveryLog[]
+  agendaEvents  AgendaEvent[]
+
+  @@index([schoolId, schoolStatus], name: "idx_comm_school")
+  @@index([guardianId], name: "idx_comm_guardian_src")
+  @@index([protocolNumber], name: "idx_comm_protocol")
+  @@index([schoolId, sentAt(sort: Desc)], name: "idx_comm_sent_at")
+  @@map("communications")
+}
+
+// ── 9a. Communication-Class Pivot ─────────────────────────────────────────
+
+model CommunicationClass {
+  communicationId String @map("communication_id") @db.Uuid
+  classId         String @map("class_id") @db.Uuid
+
+  communication Communication @relation(fields: [communicationId], references: [id])
+  class         Class         @relation(fields: [classId], references: [id])
+
+  @@id([communicationId, classId])
+  @@map("communication_classes")
+}
+
+// ── 9b. Communication-Student Pivot ──────────────────────────────────────
+
+model CommunicationStudent {
+  communicationId String @map("communication_id") @db.Uuid
+  studentId       String @map("student_id") @db.Uuid
+
+  communication Communication @relation(fields: [communicationId], references: [id])
+  student       Student       @relation(fields: [studentId], references: [id])
+
+  @@id([communicationId, studentId])
+  @@map("communication_students")
+}
+
+// ── 9c. Communication Reads (Imutável) ───────────────────────────────────
+
+model CommunicationRead {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communicationId String    @map("communication_id") @db.Uuid
+  guardianId      String    @map("guardian_id") @db.Uuid
+  studentId       String    @map("student_id") @db.Uuid
+  receivedAt      DateTime? @map("received_at")
+  viewedAt        DateTime? @map("viewed_at")
+  readAt          DateTime? @map("read_at")
+  deviceType      String?   @map("device_type") @db.VarChar(10)
+  ipAddress       String?   @map("ip_address") @db.VarChar(45)
+
+  communication Communication @relation(fields: [communicationId], references: [id])
+  guardian      Guardian      @relation(fields: [guardianId], references: [id])
+  student       Student       @relation(fields: [studentId], references: [id])
+
+  @@unique([communicationId, guardianId])
+  @@index([communicationId], name: "idx_reads_comm")
+  @@index([guardianId], name: "idx_reads_guardian")
+  @@map("communication_reads")
+}
+
+// ── 9d. Guardian Notification Inbox ──────────────────────────────────────
+
+model GuardianNotification {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  guardianId      String    @map("guardian_id") @db.Uuid
+  communicationId String    @map("communication_id") @db.Uuid
+  readAt          DateTime? @map("read_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  guardian      Guardian      @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  communication Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, communicationId])
+  @@index([guardianId, createdAt(sort: Desc)], name: "idx_notif_guardian")
+  @@map("guardian_notifications")
+}
+
+// ── 9e. Communication Delivery Log (auditoria) ────────────────────────────
+
+model CommunicationDeliveryLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communicationId String   @map("communication_id") @db.Uuid
+  guardianId      String   @map("guardian_id") @db.Uuid
+  channel         String   @db.VarChar(20)   // 'notification' | 'email' | 'both'
+  target          String   @db.VarChar(20)   // 'all' | 'student' | 'guardian'
+  emailAddress    String?  @map("email_address") @db.VarChar(200)
+  emailStatus     String?  @map("email_status") @db.VarChar(20) // 'sent' | 'failed'
+  triggeredBy     String?  @map("triggered_by") @db.Uuid
+  sentAt          DateTime @default(now()) @map("sent_at")
+
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  guardian        Guardian      @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  triggeredByUser User?         @relation("DeliveryTriggeredBy", fields: [triggeredBy], references: [id])
+
+  @@index([communicationId], name: "idx_delivery_log_comm")
+  @@map("communication_delivery_logs")
+}
+
+// ── 10. Attachments ───────────────────────────────────────────────────────
+
+model Attachment {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId        String   @map("school_id") @db.Uuid
+  communicationId String?  @map("communication_id") @db.Uuid
+  agendaEventId   String?  @map("agenda_event_id") @db.Uuid
+  uploadedBy      String?  @map("uploaded_by") @db.Uuid
+  filename        String   @db.VarChar(255)
+  storageKey      String   @map("storage_key")
+  url             String
+  contentType     String   @map("content_type") @db.VarChar(100)
+  size            Int
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  communication Communication? @relation(fields: [communicationId], references: [id])
+  agendaEvent   AgendaEvent?   @relation(fields: [agendaEventId], references: [id])
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([communicationId], name: "idx_att_comm")
+  @@index([agendaEventId], name: "idx_att_event")
+  @@map("attachments")
+}
+
+// ── 11. Agenda Events ─────────────────────────────────────────────────────
+
+enum EventType {
+  EXAM
+  PARENT_MEETING
+  FIELD_TRIP
+  HOLIDAY
+  CULTURAL
+  OTHER
+}
+
+enum RecurrenceType {
+  NONE
+  WEEKLY
+  MONTHLY
+}
+
+model AgendaEvent {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId        String    @map("school_id") @db.Uuid
+  createdBy       String    @map("created_by") @db.Uuid
+  communicationId String?   @map("communication_id") @db.Uuid
+  title           String    @db.VarChar(300)
+  description     String?
+  eventType       EventType @map("event_type")
+  startsAt        DateTime  @map("starts_at")
+  allDay          Boolean   @default(true) @map("all_day")
+  cancelledAt     DateTime? @map("cancelled_at")
+  cancelledBy     String?   @map("cancelled_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  school          School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author          User               @relation("EventCreatedBy", fields: [createdBy], references: [id])
+  cancelledByUser User?              @relation("EventCancelledBy", fields: [cancelledBy], references: [id])
+  communication   Communication?     @relation(fields: [communicationId], references: [id], onDelete: SetNull)
+  eventClasses    AgendaEventClass[]
+  attachments     Attachment[]
+
+  @@index([schoolId, startsAt], name: "idx_event_school_date")
+  @@index([communicationId], name: "idx_event_comm")
+  @@map("agenda_events")
+}
+
+model AgendaEventClass {
+  eventId String @map("event_id") @db.Uuid
+  classId String @map("class_id") @db.Uuid
+
+  event AgendaEvent @relation(fields: [eventId], references: [id])
+  class Class       @relation(fields: [classId], references: [id])
+
+  @@id([eventId, classId])
+  @@map("agenda_event_classes")
+}
+
+// ── 12. Forms ─────────────────────────────────────────────────────────────
+
+enum FormStatus {
+  OPEN
+  CLOSED
+}
+
+enum SubmissionStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+}
+
+model Form {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String    @map("school_id") @db.Uuid
+  createdBy   String    @map("created_by") @db.Uuid
+  title       String    @db.VarChar(300)
+  description String?
+  fields      Json      // array of form field definitions
+  status      FormStatus @default(OPEN)
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author      User              @relation(fields: [createdBy], references: [id])
+  submissions FormSubmission[]
+
+  @@index([schoolId, status], name: "idx_form_school")
+  @@map("forms")
+}
+
+// ── 13. Appointment Slots & Bookings ─────────────────────────────────────
+
+enum AppointmentSlotStatus {
+  AVAILABLE
+  BOOKED
+  CANCELLED
+}
+
+enum AppointmentBookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model AppointmentSlot {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String               @map("school_id") @db.Uuid
+  staffId     String               @map("staff_id") @db.Uuid
+  title       String               @db.VarChar(200)
+  notes       String?
+  startsAt    DateTime             @map("starts_at")
+  durationMin Int                  @default(30) @map("duration_min")
+  scope             String               @default("ALL") @db.VarChar(20) // ALL | CLASS | STUDENT
+  classId           String?              @map("class_id") @db.Uuid
+  studentId         String?              @map("student_id") @db.Uuid
+  status            AppointmentSlotStatus @default(AVAILABLE)
+  recurrenceGroupId String?              @map("recurrence_group_id") @db.Uuid
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  school  School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  staff   User      @relation("SlotCreatedBy", fields: [staffId], references: [id])
+  class   Class?    @relation(fields: [classId], references: [id])
+  student Student?  @relation(fields: [studentId], references: [id])
+  booking AppointmentBooking?
+
+  @@index([schoolId, startsAt], name: "idx_slot_school_date")
+  @@index([staffId, status], name: "idx_slot_staff")
+  @@map("appointment_slots")
+}
+
+model AppointmentBooking {
+  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slotId     String                   @unique @map("slot_id") @db.Uuid
+  guardianId String                   @map("guardian_id") @db.Uuid
+  studentId  String                   @map("student_id") @db.Uuid
+  notes      String?
+  status     AppointmentBookingStatus @default(CONFIRMED)
+  cancelledAt DateTime?               @map("cancelled_at")
+  cancelledBy String?                 @map("cancelled_by") @db.VarChar(10) // 'guardian' | 'staff'
+  createdAt   DateTime                @default(now()) @map("created_at")
+
+  slot     AppointmentSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  guardian Guardian        @relation(fields: [guardianId], references: [id])
+  student  Student         @relation(fields: [studentId], references: [id])
+
+  @@index([guardianId], name: "idx_booking_guardian")
+  @@map("appointment_bookings")
+}
+
+model FormSubmission {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  formId         String           @map("form_id") @db.Uuid
+  schoolId       String           @map("school_id") @db.Uuid
+  guardianId     String           @map("guardian_id") @db.Uuid
+  studentId      String           @map("student_id") @db.Uuid
+  answers        Json
+  protocolNumber String?          @unique @map("protocol_number") @db.VarChar(30)
+  status         SubmissionStatus @default(PENDING)
+  internalNote   String?          @map("internal_note")
+  resolvedAt     DateTime?        @map("resolved_at")
+  resolvedBy     String?          @map("resolved_by") @db.Uuid
+  submittedAt    DateTime         @default(now()) @map("submitted_at")
+
+  form       Form     @relation(fields: [formId], references: [id])
+  guardian   Guardian @relation(fields: [guardianId], references: [id])
+  student    Student  @relation(fields: [studentId], references: [id])
+  resolver   User?    @relation("SubmissionResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([formId, status], name: "idx_submission_form")
+  @@index([guardianId], name: "idx_submission_guardian")
+  @@map("form_submissions")
+}

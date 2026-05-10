@@ -1,0 +1,55 @@
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  SECRETARY = 'SECRETARY',
+  COORDINATOR = 'COORDINATOR',
+  TEACHER = 'TEACHER',
+}
+
+export enum PlanType {
+  STARTER = 'STARTER',
+  SCHOOL = 'SCHOOL',
+  NETWORK = 'NETWORK',
+  ENTERPRISE = 'ENTERPRISE',
+}
+
+export enum SchoolCommType {
+  NOTICE = 'NOTICE',
+  URGENT = 'URGENT',
+  INFORMATIVE = 'INFORMATIVE',
+  DOCUMENT = 'DOCUMENT',
+  PHOTO = 'PHOTO',
+  EXAM = 'EXAM',
+  MEETING = 'MEETING',
+}
+
+export enum GuardianCommType {
+  ABSENCE = 'ABSENCE',
+  MEDICAL_CERT = 'MEDICAL_CERT',
+  EARLY_DEPARTURE = 'EARLY_DEPARTURE',
+}
+
+export enum CommScope {
+  CLASS = 'CLASS',
+  STUDENT = 'STUDENT',
+}
+
+export enum SchoolCommStatus {
+  DRAFT = 'DRAFT',
+  SCHEDULED = 'SCHEDULED',
+  SENT = 'SENT',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum GuardianCommStatus {
+  SENT = 'SENT',
+  RECEIVED = 'RECEIVED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  RESOLVED = 'RESOLVED',
+}
+
+export enum LinkStatus {
+  PENDING_INVITE = 'PENDING_INVITE',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+}

@@ -1,0 +1,21 @@
+Nome do Aluno,Turma,Série,Matrícula,Nome Responsável,E-mail Responsável,Telefone Responsável,CPF Responsável,Parentesco
+Ana Lima,1º Ano A,1º Ano,2026001,Sandra Lima,sandra.lima@email.com,+5511991110001,12345678901,mae
+Ana Lima,1º Ano A,1º Ano,2026001,Roberto Lima,roberto.lima@email.com,+5511991110002,98765432100,pai
+Bruno Costa,1º Ano A,1º Ano,2026002,Fernanda Costa,fernanda.costa@email.com,+5511991110003,11122233344,mae
+Carla Souza,1º Ano A,1º Ano,2026003,Maria Souza,maria.souza@email.com,+5511991110004,55566677788,mae
+Carla Souza,1º Ano A,1º Ano,2026003,José Souza,,+5511991110005,,pai
+Diego Ramos,2º Ano B,2º Ano,2026004,Paula Ramos,paula.ramos@email.com,+5511991110006,33344455566,mae
+Diego Ramos,2º Ano B,2º Ano,2026004,Marcos Ramos,marcos.ramos@email.com,+5511991110007,77788899900,pai
+Diego Ramos,2º Ano B,2º Ano,2026004,Tereza Ramos,,+5511991110008,,avo
+Elena Ferreira,2º Ano B,2º Ano,2026005,Claudia Ferreira,claudia.ferreira@email.com,+5511991110009,44455566677,mae
+Felipe Alves,3º Ano C,3º Ano,2026006,Ricardo Alves,ricardo.alves@email.com,+5511991110010,22233344455,pai
+Felipe Alves,3º Ano C,3º Ano,2026006,Beatriz Alves,beatriz.alves@email.com,+5511991110011,66677788899,mae
+Gabriela Nunes,3º Ano C,3º Ano,2026007,Antônia Nunes,antonia.nunes@email.com,+5511991110012,88899900011,mae
+Heitor Rocha,4º Ano D,4º Ano,2026008,Sílvia Rocha,silvia.rocha@email.com,+5511991110013,10203040506,mae
+Heitor Rocha,4º Ano D,4º Ano,2026008,Eduardo Rocha,,+5511991110014,,pai
+Isabela Martins,4º Ano D,4º Ano,2026009,Luciana Martins,luciana.martins@email.com,+5511991110015,60708090102,mae
+Isabela Martins,4º Ano D,4º Ano,2026009,Carlos Martins,carlos.martins@email.com,+5511991110016,50607080910,pai
+Isabela Martins,4º Ano D,4º Ano,2026009,Norma Martins,,+5511991110017,,avo
+João Cardoso,5º Ano E,5º Ano,2026010,Renata Cardoso,renata.cardoso@email.com,+5511991110018,30405060708,mae
+João Cardoso,5º Ano E,5º Ano,2026010,Paulo Cardoso,paulo.cardoso@email.com,+5511991110019,90102030405,pai
+Karen Pinto,5º Ano E,5º Ano,2026011,Adriana Pinto,adriana.pinto@email.com,+5511991110020,20304050607,responsavel

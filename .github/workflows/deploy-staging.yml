@@ -1,0 +1,72 @@
+name: Deploy — Staging
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy para Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Configura credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            sa-east-1
+
+      - name: Login no ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build e push da imagem Docker
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -f apps/api/Dockerfile \
+            -t $ECR_REGISTRY/presente/api:$IMAGE_TAG \
+            -t $ECR_REGISTRY/presente/api:staging-latest \
+            .
+          docker push $ECR_REGISTRY/presente/api:$IMAGE_TAG
+          docker push $ECR_REGISTRY/presente/api:staging-latest
+          echo "image=$ECR_REGISTRY/presente/api:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy no servidor de Staging via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.STAGING_HOST }}
+          username: ubuntu
+          key:      ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            /opt/presente/deploy.sh ${{ github.sha }}
+
+      - name: Smoke test
+        run: |
+          sleep 10
+          curl -f https://staging-api.presente.app/health || exit 1
+
+      - name: Deploy do Web (Vercel)
+        run: npx vercel --token=${{ secrets.VERCEL_TOKEN }} --prod=false
+        env:
+          VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: apps/web

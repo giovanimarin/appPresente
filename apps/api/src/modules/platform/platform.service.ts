@@ -416,7 +416,7 @@ export class PlatformService {
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     // Conta de suporte da plataforma — senha definida via env
-    const supportEmail = process.env.SUPPORT_EMAIL ?? 'suporte@usepresente.com.br';
+    const supportEmail = process.env.SUPPORT_EMAIL ?? 'suporte@apppresente.com.br';
     const supportPassword = process.env.SUPPORT_PASSWORD ?? 'Suporte@Presente1';
     const supportHash = await bcrypt.hash(supportPassword, 10);
 
@@ -478,7 +478,7 @@ export class PlatformService {
     const school = await prisma.school.findUnique({ where: { id: schoolId } });
     if (!school) throw { status: 404, code: 'SCHOOL_NOT_FOUND', message: 'Escola não encontrada' };
 
-    const supportEmail = process.env.SUPPORT_EMAIL ?? 'suporte@usepresente.com.br';
+    const supportEmail = process.env.SUPPORT_EMAIL ?? 'suporte@apppresente.com.br';
     const admins = await prisma.user.findMany({
       where: { schoolId, role: 'ADMIN', active: true, email: { not: supportEmail } },
       select: { id: true, name: true, email: true, role: true, lastLoginAt: true, createdAt: true },

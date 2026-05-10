@@ -54,7 +54,7 @@ module "storage" {
   source       = "../../modules/storage"
   project      = var.project
   env          = var.env
-  cors_origins = ["https://presente.app", "https://www.presente.app"]
+  cors_origins = ["https://apppresente.com.br", "https://www.apppresente.com.br"]
 }
 
 module "compute" {
@@ -65,7 +65,7 @@ module "compute" {
   subnet_id         = module.networking.public_subnet_ids[0]
   security_group_id = module.networking.app_sg_id
   instance_type     = "t3.small"
-  ssh_public_key    = var.ssh_public_key
+  key_name          = "presente-production"
   ecr_registry      = var.ecr_registry
   aws_region        = var.aws_region
 }

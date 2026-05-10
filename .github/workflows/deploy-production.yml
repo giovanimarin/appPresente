@@ -64,7 +64,7 @@ jobs:
       - name: Smoke test de produção
         run: |
           sleep 15
-          curl -f https://api.presente.app/health || exit 1
+          curl -f https://api.apppresente.com.br/health || exit 1
 
       - name: Deploy do Web em Produção (Vercel)
         run: npx vercel --token=${{ secrets.VERCEL_TOKEN }} --prod

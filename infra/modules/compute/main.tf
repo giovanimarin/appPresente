@@ -11,17 +11,13 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-resource "aws_key_pair" "deploy" {
-  key_name   = "${var.project}-${var.env}-deploy"
-  public_key = var.ssh_public_key
-}
-
 resource "aws_instance" "app" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
-  key_name               = aws_key_pair.deploy.key_name
+  key_name               = var.key_name
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [var.security_group_id]
+  iam_instance_profile   = aws_iam_instance_profile.app.name
 
   root_block_device {
     volume_size = 30

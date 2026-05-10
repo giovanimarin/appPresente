@@ -50,3 +50,36 @@ DEPLOY
 
 chmod +x /opt/presente/deploy.sh
 chown ubuntu:ubuntu /opt/presente/deploy.sh
+
+# Docker Compose — gerado no boot, API_IMAGE é sobrescrito no deploy
+cat > /opt/presente/docker-compose.yml << 'COMPOSE'
+services:
+  api:
+    image: $${API_IMAGE:-presente/api:latest}
+    container_name: presente-api
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: presente-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis_data:
+COMPOSE
+
+chown ubuntu:ubuntu /opt/presente/docker-compose.yml

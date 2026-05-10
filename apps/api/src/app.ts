@@ -26,9 +26,15 @@ const app = express();
 
 // ── Segurança e parsing ───────────────────────────────────────────────────
 app.use(helmet());
+const allowedOrigins = env.FRONTEND_URL.split(',').map(o => o.trim());
 app.use(
   cors({
-    origin: process.env.NODE_ENV === 'production' ? env.FRONTEND_URL : true,
+    origin: process.env.NODE_ENV === 'production'
+      ? (origin, cb) => {
+          if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+          cb(new Error(`CORS: origem não permitida: ${origin}`));
+        }
+      : true,
     credentials: true,
   }),
 );

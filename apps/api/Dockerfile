@@ -21,7 +21,7 @@ RUN cd apps/api && npx prisma generate && npx tsc --build tsconfig.json
 # ── Production stage ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init openssl
 
 WORKDIR /app
 

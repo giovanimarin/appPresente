@@ -15,8 +15,8 @@ COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-# Gera Prisma client e compila TypeScript
-RUN cd apps/api && npx prisma generate && npm run build
+# Gera Prisma client e compila TypeScript (tsc --build respeita project references)
+RUN cd apps/api && npx prisma generate && npx tsc --build tsconfig.json
 
 # ── Production stage ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner

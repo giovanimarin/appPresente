@@ -357,7 +357,7 @@ export class CommunicationsService {
 
     if (links.length === 0) return [];
 
-    const classIds = links.map((l) => l.student.classId);
+    const classIds = links.map((l) => l.student.classId).filter((id): id is string => id !== null);
     const studentIds = links.map((l) => l.studentId);
     const schoolIds = [...new Set(links.map((l) => l.student.schoolId))];
 

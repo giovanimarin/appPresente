@@ -47,7 +47,7 @@ export async function deleteSlot(req: AuthRequest, res: Response, next: NextFunc
 }
 
 export async function staffCancelBooking(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  try { res.json(await svc.cancelBooking(req.user!.schoolId, req.params.bookingId, 'staff', req.user!.id, req.user!.role)); }
+  try { res.json(await svc.cancelBooking(req.user!.schoolId, req.params.bookingId, 'staff', req.user!.id)); }
   catch (err) { handleErr(err, res, next); }
 }
 

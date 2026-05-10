@@ -188,7 +188,7 @@ export class FormsService {
         schoolId: form.schoolId,
         guardianId,
         studentId: dto.studentId,
-        answers: dto.answers,
+        answers: dto.answers as object,
         protocolNumber,
       },
     });

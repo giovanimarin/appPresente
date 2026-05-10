@@ -190,9 +190,9 @@ export class GuardiansService {
       schoolMap.get(sid)!.students.push({
         id: link.student.id,
         name: link.student.name,
-        classId: link.student.class.id,
-        className: link.student.class.name,
-        grade: link.student.class.grade,
+        classId: link.student.class?.id ?? '',
+        className: link.student.class?.name ?? '',
+        grade: link.student.class?.grade ?? '',
         relationship: link.relationship,
       });
     }

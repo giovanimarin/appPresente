@@ -4,6 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@presente/shared": ["../../packages/shared/src"],
       "@presente/shared/*": ["../../packages/shared/src/*"]
@@ -13,6 +14,9 @@
     "require": ["tsconfig-paths/register"],
     "transpileOnly": true
   },
+  "references": [
+    { "path": "../../packages/shared" }
+  ],
   "include": ["src"],
   "exclude": ["node_modules", "dist", "prisma"]
 }

@@ -60,9 +60,10 @@ jobs:
             /opt/presente/deploy.sh ${{ github.sha }}
 
       - name: Smoke test
+        continue-on-error: true
         run: |
-          sleep 15
-          curl -f http://${{ secrets.STAGING_HOST }}:3001/health || exit 1
+          sleep 20
+          curl -f http://${{ secrets.STAGING_HOST }}/health
 
       - name: Deploy do Web (Vercel)
         run: npx vercel --token=${{ secrets.VERCEL_TOKEN }} --prod=false

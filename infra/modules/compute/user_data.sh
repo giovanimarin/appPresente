@@ -1,21 +1,52 @@
 #!/bin/bash
 set -e
 
-# Instala Docker
+# Instala Docker e nginx
 apt-get update -y
-apt-get install -y ca-certificates curl gnupg lsb-release awscli
+apt-get install -y ca-certificates curl gnupg lsb-release awscli nginx
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 apt-get update -y
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
-# Habilita Docker no boot
-systemctl enable docker
+# Habilita Docker e nginx no boot
+systemctl enable docker nginx
 systemctl start docker
 
 # Adiciona ubuntu ao grupo docker
 usermod -aG docker ubuntu
+
+# Configura nginx como proxy reverso para a API
+cat > /etc/nginx/sites-available/presente << 'NGINX'
+server {
+    listen 80;
+    server_name _;
+
+    location /health {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        client_max_body_size 20M;
+    }
+}
+NGINX
+
+ln -sf /etc/nginx/sites-available/presente /etc/nginx/sites-enabled/presente
+rm -f /etc/nginx/sites-enabled/default
+systemctl start nginx
 
 # Cria diretório da aplicação
 mkdir -p /opt/presente
@@ -29,7 +60,6 @@ set -e
 ECR_REGISTRY="${ecr_registry}"
 AWS_REGION="${aws_region}"
 IMAGE_TAG="$1"
-ENV="${env}"
 
 echo "[deploy] Autenticando no ECR..."
 aws ecr get-login-password --region "$AWS_REGION" | \

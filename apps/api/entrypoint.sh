@@ -2,8 +2,7 @@
 set -e
 
 echo "[entrypoint] Rodando migrações..."
-cd /app/apps/api
-node_modules/.bin/prisma migrate deploy
+/app/node_modules/.bin/prisma migrate deploy --schema /app/apps/api/prisma/schema.prisma
 
 echo "[entrypoint] Iniciando aplicação..."
 exec dumb-init node /app/apps/api/dist/app.js

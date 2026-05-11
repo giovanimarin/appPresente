@@ -11,11 +11,6 @@ export const registerSchoolSchema = z.object({
   // Admin que será criado junto com a escola
   adminName: z.string().min(2).max(200),
   adminEmail: z.string().email('E-mail inválido').max(200),
-  adminPassword: z
-    .string()
-    .min(8, 'Senha deve ter ao menos 8 caracteres')
-    .regex(/[A-Z]/, 'Senha deve conter ao menos uma letra maiúscula')
-    .regex(/[0-9]/, 'Senha deve conter ao menos um número'),
 });
 
 const emptyToUndefined = (v: unknown) => (v === '' ? undefined : v);

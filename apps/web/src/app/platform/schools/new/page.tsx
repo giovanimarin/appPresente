@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { schoolsApi } from '@/lib/platform-api';
-import { ArrowLeft, Copy, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const schema = z.object({
@@ -41,9 +41,8 @@ export default function NewSchoolPage() {
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{
     schoolId: string; schoolName: string;
-    adminEmail: string; tempPassword: string;
+    adminEmail: string;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -62,12 +61,11 @@ export default function NewSchoolPage() {
         city: data.city || undefined,
         address: data.address || undefined,
       });
-      const { school, admin, tempPassword } = res.data;
+      const { school, admin } = res.data;
       setCreated({
         schoolId: school.id,
         schoolName: school.name,
         adminEmail: admin.email,
-        tempPassword,
       });
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
@@ -75,25 +73,6 @@ export default function NewSchoolPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function copyPassword() {
-    if (!created) return;
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(created.tempPassword);
-    } else {
-      // Fallback para HTTP (sem HTTPS)
-      const el = document.createElement('textarea');
-      el.value = created.tempPassword;
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   // Tela de sucesso
@@ -107,36 +86,18 @@ export default function NewSchoolPage() {
           </div>
 
           <p className="text-gray-300 text-sm">
-            <span className="font-medium text-white">{created.schoolName}</span> foi cadastrada.
-            Compartilhe as credenciais abaixo com o(a) administrador(a) da escola.
+            <span className="font-medium text-white">{created.schoolName}</span> foi cadastrada com sucesso.
           </p>
 
           <div className="bg-gray-900 rounded-lg p-4 space-y-3">
             <div>
-              <p className="text-gray-500 text-xs mb-0.5">URL de acesso</p>
-              <p className="text-white text-sm font-mono">http://localhost:3000/login</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-0.5">E-mail</p>
+              <p className="text-gray-500 text-xs mb-0.5">E-mail do administrador</p>
               <p className="text-white text-sm font-mono">{created.adminEmail}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs mb-0.5">Senha temporaria</p>
-              <div className="flex items-center gap-2">
-                <p className="text-yellow-300 text-sm font-mono font-bold">{created.tempPassword}</p>
-                <button
-                  onClick={copyPassword}
-                  className="p-1 text-gray-400 hover:text-white transition-colors"
-                  title="Copiar senha"
-                >
-                  {copied ? <CheckCircle2 size={14} className="text-green-400" /> : <Copy size={14} />}
-                </button>
-              </div>
             </div>
           </div>
 
-          <p className="text-yellow-400/80 text-xs">
-            Esta senha nao sera exibida novamente. Guarde-a antes de continuar.
+          <p className="text-green-400/80 text-xs">
+            Um e-mail com o link de primeiro acesso foi enviado para o administrador. O link expira em 72 horas.
           </p>
 
           <div className="flex gap-3 pt-2">
@@ -307,7 +268,7 @@ export default function NewSchoolPage() {
           <div>
             <h2 className="text-white font-semibold text-sm">Administrador(a) inicial</h2>
             <p className="text-gray-500 text-xs mt-0.5">
-              Sera criado com perfil de Diretor(a) (acesso total). Uma senha temporaria sera gerada.
+              Sera criado com perfil de Diretor(a) (acesso total). Um link de primeiro acesso sera enviado por e-mail.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

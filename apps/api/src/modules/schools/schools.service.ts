@@ -4,19 +4,19 @@ import { UserRole, PlanType } from '@prisma/client';
 import { generateUploadUrl, generateDownloadUrl, buildStorageKey } from '../../config/storage';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import { redis, redisKeys } from '../../config/redis';
+import { sendWelcomeEmail } from '../../utils/mailer';
 import type { RegisterSchoolDto, UpdateSchoolDto } from './schools.schemas';
 
 export class SchoolsService {
   async register(dto: RegisterSchoolDto) {
-    // Verifica se e-mail do admin já existe
-    const existing = await prisma.user.findFirst({
-      where: { email: dto.adminEmail },
-    });
+    const existing = await prisma.user.findFirst({ where: { email: dto.adminEmail } });
     if (existing) {
       throw { status: 409, code: 'EMAIL_IN_USE', message: 'E-mail do administrador já cadastrado' };
     }
 
-    const passwordHash = await bcrypt.hash(dto.adminPassword, 12);
+    // Senha temporária inutilizável — admin definirá a própria senha via link de primeiro acesso
+    const placeholderHash = await bcrypt.hash(randomUUID(), 12);
     const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const school = await prisma.school.create({
@@ -35,7 +35,7 @@ export class SchoolsService {
           create: {
             name: dto.adminName,
             email: dto.adminEmail,
-            passwordHash,
+            passwordHash: placeholderHash,
             role: UserRole.ADMIN,
             active: true,
           },
@@ -49,7 +49,22 @@ export class SchoolsService {
       },
     });
 
-    return { school, admin: school.users[0] };
+    const admin = school.users[0];
+
+    // Gera token de primeiro acesso (TTL 72h)
+    const token = randomUUID();
+    await redis.set(redisKeys.firstAccess(token), admin.id, 'EX', 72 * 60 * 60);
+
+    const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+    const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+
+    try {
+      await sendWelcomeEmail(dto.adminEmail, dto.adminName, dto.name, firstAccessUrl);
+    } catch (e) {
+      console.error('[schools] Falha ao enviar e-mail de boas-vindas:', e);
+    }
+
+    return { school, admin };
   }
 
   async getMe(schoolId: string) {

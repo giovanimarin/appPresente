@@ -2,8 +2,7 @@ name: Deploy — Production
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [main]
 
 jobs:
   deploy:
@@ -13,17 +12,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          fetch-depth: 0   # necessário para acessar HEAD^2 do merge commit
 
-      - run: npm ci
+      - name: Extrai SHA do commit de staging
+        id: staging
+        run: |
+          # HEAD^2 = segundo parent do merge commit = tip do branch staging
+          SHA=$(git rev-parse HEAD^2)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
 
-      - name: Extrai versão da tag
-        id: tag
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Lê versão do package.json
+        id: version
+        run: |
+          VERSION="v$(jq -r '.version' package.json)"
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Configura credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,21 +39,25 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build e push da imagem Docker
+      - name: Promove imagem de staging para produção (sem rebuild)
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          VERSION:       ${{ steps.tag.outputs.version }}
-          SHA:           ${{ github.sha }}
+          STAGING_SHA:  ${{ steps.staging.outputs.sha }}
+          VERSION:      ${{ steps.version.outputs.tag }}
         run: |
-          docker build \
-            -f apps/api/Dockerfile \
-            -t $ECR_REGISTRY/presente/api:$VERSION \
-            -t $ECR_REGISTRY/presente/api:$SHA \
-            -t $ECR_REGISTRY/presente/api:latest \
-            .
+          docker pull $ECR_REGISTRY/presente/api:$STAGING_SHA
+          docker tag  $ECR_REGISTRY/presente/api:$STAGING_SHA \
+                      $ECR_REGISTRY/presente/api:$VERSION
           docker push $ECR_REGISTRY/presente/api:$VERSION
-          docker push $ECR_REGISTRY/presente/api:$SHA
-          docker push $ECR_REGISTRY/presente/api:latest
+
+      - name: Cria tag de versão no git
+        env:
+          VERSION: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag $VERSION
+          git push origin $VERSION
 
       - name: Deploy no servidor de Produção via SSH
         uses: appleboy/ssh-action@v1
@@ -59,18 +66,18 @@ jobs:
           username: ubuntu
           key:      ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            /opt/presente/deploy.sh ${{ github.sha }}
+            /opt/presente/deploy.sh ${{ steps.version.outputs.tag }}
 
       - name: Smoke test de produção
         run: |
           sleep 15
           curl -f https://api.apppresente.com.br/health || exit 1
 
-      # Frontend deployado automaticamente pela integração GitHub-Vercel
-
       - name: Cria GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name:   ${{ steps.tag.outputs.version }}
-          name:       "Presente ${{ steps.tag.outputs.version }}"
+          tag_name:               ${{ steps.version.outputs.tag }}
+          name:                   "Presente ${{ steps.version.outputs.tag }}"
           generate_release_notes: true
+
+      # Frontend: Vercel detecta push no branch main e faz deploy automático

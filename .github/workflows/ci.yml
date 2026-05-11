@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, staging]
+    branches: [staging, main]
   push:
-    branches: [main]
+    branches: [staging]
 
 jobs:
   lint-typecheck:

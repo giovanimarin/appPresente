@@ -34,6 +34,28 @@ export const updateMeSchema = z.object({
   { message: 'Informe a senha atual para definir uma nova', path: ['currentPassword'] },
 );
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('E-mail inválido'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().uuid('Token inválido'),
+  password: z
+    .string()
+    .min(8, 'Senha deve ter ao menos 8 caracteres')
+    .regex(/[A-Z]/, 'Deve conter ao menos uma letra maiúscula')
+    .regex(/[0-9]/, 'Deve conter ao menos um número'),
+});
+
+export const firstAccessSchema = z.object({
+  token: z.string().uuid('Token inválido'),
+  password: z
+    .string()
+    .min(8, 'Senha deve ter ao menos 8 caracteres')
+    .regex(/[A-Z]/, 'Senha deve conter ao menos uma letra maiúscula')
+    .regex(/[0-9]/, 'Senha deve conter ao menos um número'),
+});
+
 export const refreshSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token obrigatório'),
   userId: z.string().uuid('userId inválido'),
@@ -48,3 +70,6 @@ export type { OtpSendDto as GuardianRequestOtpDto };
 export type { OtpVerifyDto as GuardianVerifyOtpDto };
 export type UpdateMeDto = z.infer<typeof updateMeSchema>;
 export type RefreshDto = z.infer<typeof refreshSchema>;
+export type FirstAccessDto = z.infer<typeof firstAccessSchema>;
+export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;

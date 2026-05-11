@@ -42,6 +42,73 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
   }
 }
 
+export async function sendWelcomeEmail(
+  to: string,
+  adminName: string,
+  schoolName: string,
+  firstAccessUrl: string,
+): Promise<void> {
+  const subject = `Bem-vindo ao Presente — ${schoolName}`;
+
+  const text = [
+    `Olá, ${adminName}!`,
+    '',
+    `A escola ${schoolName} foi cadastrada no Presente.`,
+    '',
+    'Para definir sua senha e acessar o sistema, clique no link abaixo:',
+    firstAccessUrl,
+    '',
+    'Este link expira em 72 horas.',
+    '',
+    'Caso não tenha solicitado este cadastro, ignore este e-mail.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="color:#1f2937">Bem-vindo ao Presente!</h2>
+      <p style="color:#555">Olá, <strong>${adminName}</strong>!</p>
+      <p style="color:#555">A escola <strong>${schoolName}</strong> foi cadastrada no Presente.</p>
+      <p style="color:#555">Para definir sua senha e acessar o sistema, clique no botão abaixo:</p>
+      <a href="${firstAccessUrl}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0">
+        Definir minha senha
+      </a>
+      <p style="color:#9ca3af;font-size:13px">Este link expira em 72 horas. Caso não tenha solicitado este cadastro, ignore este e-mail.</p>
+    </div>
+  `;
+
+  await sendEmail(to, subject, text, html);
+}
+
+export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string): Promise<void> {
+  const subject = 'Redefinição de senha — Presente';
+  const text = [
+    `Olá, ${name}!`,
+    '',
+    'Recebemos uma solicitação para redefinir sua senha.',
+    '',
+    'Clique no link abaixo para criar uma nova senha:',
+    resetUrl,
+    '',
+    'Este link expira em 1 hora.',
+    '',
+    'Se você não solicitou isso, ignore este e-mail.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="color:#1f2937">Redefinição de senha</h2>
+      <p style="color:#555">Olá, <strong>${name}</strong>!</p>
+      <p style="color:#555">Recebemos uma solicitação para redefinir sua senha.</p>
+      <a href="${resetUrl}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0">
+        Redefinir senha
+      </a>
+      <p style="color:#9ca3af;font-size:13px">Este link expira em 1 hora. Se você não solicitou isso, ignore este e-mail.</p>
+    </div>
+  `;
+
+  await sendEmail(to, subject, text, html);
+}
+
 export async function sendCommunicationEmail(
   to: string,
   guardianName: string,

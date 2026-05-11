@@ -8,17 +8,12 @@ import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/lib/api';
 import PhoneInput from '@/components/PhoneInput';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
   email: z.string().email('E-mail inválido'),
-  password: z
-    .string()
-    .min(8, 'Mínimo 8 caracteres')
-    .regex(/[A-Z]/, 'Deve conter ao menos uma letra maiúscula')
-    .regex(/[0-9]/, 'Deve conter ao menos um número'),
   role: z.enum(['SECRETARY', 'COORDINATOR', 'TEACHER'], {
     required_error: 'Selecione um perfil',
   }),
@@ -36,7 +31,6 @@ const ROLE_OPTIONS = [
 export default function NewUserPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const {
@@ -108,27 +102,8 @@ export default function NewUserPage() {
             {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Senha inicial</label>
-            <div className="relative">
-              <input
-                {...register('password')}
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Mín. 8 chars, 1 maiúscula, 1 número"
-                className={cn(
-                  'w-full px-3 py-2.5 pr-10 rounded-lg border text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none',
-                  errors.password ? 'border-red-300' : 'border-gray-300',
-                )}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-blue-700">Um e-mail com o link de primeiro acesso será enviado automaticamente para o usuário.</p>
           </div>
 
           <div>

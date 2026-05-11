@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { prisma } from '../../config/database';
 import {
   generateAccessToken,
@@ -8,8 +9,9 @@ import {
   revokeRefreshToken,
 } from '../../utils/jwt';
 import { generateOtp, storeOtp, verifyOtp, checkOtpRateLimit } from '../../utils/otp';
-import { sendOtpEmail } from '../../utils/mailer';
-import type { LoginDto, OtpSendDto, OtpVerifyDto, RefreshDto, GuardianLoginDto, GuardianSetPasswordDto, UpdateMeDto } from './auth.schemas';
+import { sendOtpEmail, sendPasswordResetEmail } from '../../utils/mailer';
+import { redis, redisKeys } from '../../config/redis';
+import type { LoginDto, OtpSendDto, OtpVerifyDto, RefreshDto, GuardianLoginDto, GuardianSetPasswordDto, UpdateMeDto, FirstAccessDto, ForgotPasswordDto, ResetPasswordDto } from './auth.schemas';
 
 export class AuthService {
   // ── Staff: Login com email + senha ────────────────────────────────────────
@@ -291,6 +293,75 @@ export class AuthService {
     });
 
     return { user: updated };
+  }
+
+  // ── Recuperação de Senha ──────────────────────────────────────────────────
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await prisma.user.findFirst({ where: { email: dto.email, active: true } });
+    // Não revela se o e-mail existe ou não
+    if (!user) return { message: 'Se o e-mail estiver cadastrado, você receberá um link em breve.' };
+
+    const token = randomUUID();
+    await redis.set(redisKeys.passwordReset(token), user.id, 'EX', 60 * 60);
+
+    const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/redefinir-senha?token=${token}`;
+
+    try {
+      await sendPasswordResetEmail(dto.email, user.name, resetUrl);
+    } catch (e) {
+      console.error('[auth] Falha ao enviar e-mail de recuperação:', e);
+    }
+
+    return { message: 'Se o e-mail estiver cadastrado, você receberá um link em breve.' };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const userId = await redis.get(redisKeys.passwordReset(dto.token));
+    if (!userId) {
+      throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await redis.del(redisKeys.passwordReset(dto.token));
+
+    return { ok: true, message: 'Senha redefinida com sucesso. Faça login para continuar.' };
+  }
+
+  // ── Primeiro Acesso ───────────────────────────────────────────────────────
+
+  async validateFirstAccessToken(token: string) {
+    const userId = await redis.get(redisKeys.firstAccess(token));
+    if (!userId) {
+      throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true },
+    });
+    if (!user) {
+      throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
+    }
+    return { valid: true, user };
+  }
+
+  async completeFirstAccess(dto: FirstAccessDto) {
+    const userId = await redis.get(redisKeys.firstAccess(dto.token));
+    if (!userId) {
+      throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    await redis.del(redisKeys.firstAccess(dto.token));
+
+    return { ok: true, message: 'Senha definida com sucesso. Faça login para continuar.' };
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

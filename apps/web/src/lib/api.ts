@@ -54,6 +54,10 @@ export const authApi = {
   verifyOtp: (email: string, code: string) => api.post('/auth/guardian/verify-otp', { email, code }),
   guardianLogin: (email: string, password: string) => api.post('/auth/guardian/login', { email, password }),
   guardianSetPassword: (data: { currentPassword?: string; newPassword: string }) => api.post('/auth/guardian/set-password', data),
+  validateFirstAccessToken: (token: string) => api.get(`/auth/staff/first-access?token=${token}`),
+  completeFirstAccess: (token: string, password: string) => api.post('/auth/staff/first-access', { token, password }),
+  forgotPassword: (email: string) => api.post('/auth/staff/forgot-password', { email }),
+  resetPassword: (token: string, password: string) => api.post('/auth/staff/reset-password', { token, password }),
 };
 
 // Schools

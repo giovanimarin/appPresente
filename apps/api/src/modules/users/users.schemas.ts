@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createUserSchema = z.object({
   name: z.string().min(2).max(200),
   email: z.string().email().max(200),
-  password: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
+  password: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/).optional(),
   role: z.enum(['SECRETARY', 'COORDINATOR', 'TEACHER']),
   phone: z.string().max(20).optional(),
   unitId: z.string().uuid().optional(),

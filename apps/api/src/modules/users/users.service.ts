@@ -1,5 +1,8 @@
 import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { prisma } from '../../config/database';
+import { redis, redisKeys } from '../../config/redis';
+import { sendWelcomeEmail } from '../../utils/mailer';
 import type { CreateUserDto, UpdateUserDto } from './users.schemas';
 
 const USER_SELECT = {
@@ -30,8 +33,12 @@ export class UsersService {
     if (existing) {
       throw { status: 409, code: 'EMAIL_IN_USE', message: 'E-mail já cadastrado nesta escola' };
     }
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-    return prisma.user.create({
+
+    const passwordHash = dto.password
+      ? await bcrypt.hash(dto.password, 12)
+      : await bcrypt.hash(randomUUID(), 12);
+
+    const user = await prisma.user.create({
       data: {
         schoolId,
         name: dto.name,
@@ -42,8 +49,22 @@ export class UsersService {
         unitId: dto.unitId,
         active: true,
       },
-      select: USER_SELECT,
+      select: { ...USER_SELECT, school: { select: { name: true } } },
     });
+
+    if (!dto.password) {
+      const token = randomUUID();
+      await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
+      const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+      const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+      try {
+        await sendWelcomeEmail(dto.email, dto.name, user.school.name, firstAccessUrl);
+      } catch (e) {
+        console.error('[users] Falha ao enviar e-mail de boas-vindas:', e);
+      }
+    }
+
+    return user;
   }
 
   async update(schoolId: string, userId: string, dto: UpdateUserDto) {

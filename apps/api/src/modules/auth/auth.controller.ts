@@ -101,6 +101,50 @@ export async function me(req: AuthRequest, res: Response, next: NextFunction): P
   }
 }
 
+export async function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await authService.forgotPassword(req.body);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await authService.resetPassword(req.body);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
+export async function validateFirstAccessToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await authService.validateFirstAccessToken(req.query.token as string);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
+export async function completeFirstAccess(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await authService.completeFirstAccess(req.body);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
 export async function updateMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await authService.updateMe(req.user!.id, req.user!.schoolId, req.body);

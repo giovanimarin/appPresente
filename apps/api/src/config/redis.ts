@@ -20,4 +20,6 @@ export const redisKeys = {
   otp: (phone: string) => `otp:${phone}`,
   otpAttempts: (phone: string) => `otp_attempts:${phone}`,
   rateLimit: (identifier: string) => `rate:${identifier}`,
+  firstAccess: (token: string) => `first_access:${token}`,
+  passwordReset: (token: string) => `pwd_reset:${token}`,
 };

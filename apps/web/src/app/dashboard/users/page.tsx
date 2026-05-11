@@ -395,7 +395,11 @@ export default function UsersPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-12 text-gray-400">Nenhum usuário encontrado</div>
             ) : filtered.map((user) => (
-              <div key={user.id} className="px-5 py-4 flex items-center gap-4">
+              <div
+                key={user.id}
+                className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => router.push(`/dashboard/users/${user.id}/edit`)}
+              >
                 <div className={cn('w-9 h-9 rounded-full flex items-center justify-center', user.active ? 'bg-gray-100' : 'bg-gray-50')}>
                   <UserCircle size={20} className={user.active ? 'text-gray-400' : 'text-gray-300'} />
                 </div>
@@ -407,15 +411,17 @@ export default function UsersPage() {
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
                 <span className={cn('text-xs px-2 py-1 rounded-full font-medium border', ROLE_COLORS[user.role])}>{ROLE_LABELS[user.role] ?? user.role}</span>
-                <ActionMenu
-                  isActive={user.active}
-                  onEdit={() => router.push(`/dashboard/users/${user.id}/edit`)}
-                  onArchive={() => archiveMut.mutate(user.id)}
-                  onReactivate={() => reactivateMut.mutate(user.id)}
-                  onDelete={() => deleteMut.mutate(user.id)}
-                  archivePending={archiveMut.isPending}
-                  deletePending={deleteMut.isPending}
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ActionMenu
+                    isActive={user.active}
+                    onEdit={() => router.push(`/dashboard/users/${user.id}/edit`)}
+                    onArchive={() => archiveMut.mutate(user.id)}
+                    onReactivate={() => reactivateMut.mutate(user.id)}
+                    onDelete={() => deleteMut.mutate(user.id)}
+                    archivePending={archiveMut.isPending}
+                    deletePending={deleteMut.isPending}
+                  />
+                </div>
               </div>
             ))}
           </div>

@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { validate } from '../../middlewares/validate';
 import { authenticate } from '../../middlewares/auth';
 import { redisRateLimit } from '../../middlewares/rateLimit';
-import { loginSchema, otpSendSchema, otpVerifySchema, refreshSchema, guardianLoginSchema, guardianSetPasswordSchema, updateMeSchema } from './auth.schemas';
-import { login, sendOtp, verifyOtp, refresh, logout, me, updateMe, guardianLogin, guardianSetPassword } from './auth.controller';
+import { loginSchema, otpSendSchema, otpVerifySchema, refreshSchema, guardianLoginSchema, guardianSetPasswordSchema, updateMeSchema, firstAccessSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schemas';
+import { login, sendOtp, verifyOtp, refresh, logout, me, updateMe, guardianLogin, guardianSetPassword, validateFirstAccessToken, completeFirstAccess, forgotPassword, resetPassword } from './auth.controller';
 
 const router = Router();
 
@@ -45,6 +45,33 @@ router.post(
   authenticate,
   validate(guardianSetPasswordSchema),
   guardianSetPassword,
+);
+
+// POST /auth/staff/forgot-password — Envia e-mail de recuperação de senha
+router.post(
+  '/staff/forgot-password',
+  redisRateLimit({ windowSeconds: 60, max: 5, keyPrefix: 'rl:forgot_pwd' }),
+  validate(forgotPasswordSchema),
+  forgotPassword,
+);
+
+// POST /auth/staff/reset-password — Redefine senha via token
+router.post(
+  '/staff/reset-password',
+  redisRateLimit({ windowSeconds: 60, max: 10, keyPrefix: 'rl:reset_pwd' }),
+  validate(resetPasswordSchema),
+  resetPassword,
+);
+
+// GET  /auth/staff/first-access?token=xxx — Valida token de primeiro acesso
+router.get('/staff/first-access', validateFirstAccessToken);
+
+// POST /auth/staff/first-access — Define senha no primeiro acesso
+router.post(
+  '/staff/first-access',
+  redisRateLimit({ windowSeconds: 60, max: 10, keyPrefix: 'rl:first_access' }),
+  validate(firstAccessSchema),
+  completeFirstAccess,
 );
 
 // POST /auth/refresh — Renova access token

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { studentsApi, classesApi } from '@/lib/api';
 import ActionMenu from '@/components/ActionMenu';
 import { cn } from '@/lib/utils';
+import { getUser } from '@/lib/auth';
 import { Plus, Loader2, Search, Upload, UserCheck, UserX } from 'lucide-react';
 import Link from 'next/link';
 import ClassCombobox from '@/components/ClassCombobox';
@@ -19,6 +20,7 @@ type Student = {
 export default function StudentsPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const isTeacher = getUser()?.role === 'TEACHER';
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [guardianFilter, setGuardianFilter] = useState(''); // '' | 'with' | 'without'
@@ -54,14 +56,16 @@ export default function StudentsPage() {
           <h1 className="text-xl font-bold text-gray-900">Alunos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{filtered.length} aluno{filtered.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/students/import" className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">
-            <Upload size={16} /> Importar CSV
-          </Link>
-          <a href="/dashboard/students/new" className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
-            <Plus size={16} /> Novo aluno
-          </a>
-        </div>
+        {!isTeacher && (
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/students/import" className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">
+              <Upload size={16} /> Importar CSV
+            </Link>
+            <a href="/dashboard/students/new" className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+              <Plus size={16} /> Novo aluno
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Filtros */}
@@ -121,15 +125,17 @@ export default function StudentsPage() {
                 <UserX size={12} /> Sem resp.
               </span>
             )}
-            <ActionMenu
-              isActive={student.active}
-              onEdit={() => router.push(`/dashboard/students/${student.id}/edit`)}
-              onArchive={() => archiveMut.mutate(student.id)}
-              onReactivate={() => reactivateMut.mutate(student.id)}
-              onDelete={() => deleteMut.mutate(student.id)}
-              archivePending={archiveMut.isPending}
-              deletePending={deleteMut.isPending}
-            />
+            {!isTeacher && (
+              <ActionMenu
+                isActive={student.active}
+                onEdit={() => router.push(`/dashboard/students/${student.id}/edit`)}
+                onArchive={() => archiveMut.mutate(student.id)}
+                onReactivate={() => reactivateMut.mutate(student.id)}
+                onDelete={() => deleteMut.mutate(student.id)}
+                archivePending={archiveMut.isPending}
+                deletePending={deleteMut.isPending}
+              />
+            )}
           </div>
         ))}
       </div>

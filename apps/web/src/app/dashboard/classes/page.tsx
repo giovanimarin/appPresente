@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { classesApi } from '@/lib/api';
 import ActionMenu from '@/components/ActionMenu';
 import { cn } from '@/lib/utils';
+import { getUser } from '@/lib/auth';
 import { Plus, Loader2, Users, Upload, Search } from 'lucide-react';
 
 const SHIFT_LABELS: Record<string, string> = {
@@ -18,6 +19,7 @@ type Class = { id: string; name: string; grade?: string; shift?: string; year?: 
 export default function ClassesPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const isTeacher = getUser()?.role === 'TEACHER';
   const [search, setSearch] = useState('');
   const [shiftFilter, setShiftFilter] = useState('');
   const [showInactive, setShowInactive] = useState(false);
@@ -45,14 +47,16 @@ export default function ClassesPage() {
           <h1 className="text-xl font-bold text-gray-900">Turmas</h1>
           <p className="text-sm text-gray-500 mt-0.5">{filtered.length} turma{filtered.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/students/import" className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-            <Upload size={16} /> Importar CSV
-          </Link>
-          <a href="/dashboard/classes/new" className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors">
-            <Plus size={16} /> Nova turma
-          </a>
-        </div>
+        {!isTeacher && (
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/students/import" className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+              <Upload size={16} /> Importar CSV
+            </Link>
+            <a href="/dashboard/classes/new" className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors">
+              <Plus size={16} /> Nova turma
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Filtros */}
@@ -82,17 +86,19 @@ export default function ClassesPage() {
           <div className="col-span-full text-center py-12 text-gray-400">Nenhuma turma encontrada</div>
         ) : filtered.map((cls) => (
           <div key={cls.id} className={cn('bg-white rounded-xl border border-gray-200 p-5 relative', !cls.active && 'opacity-60')}>
-            <div className="absolute top-3 right-3">
-              <ActionMenu
-                isActive={cls.active}
-                onEdit={() => router.push(`/dashboard/classes/${cls.id}/edit`)}
-                onArchive={() => archiveMut.mutate(cls.id)}
-                onReactivate={() => reactivateMut.mutate(cls.id)}
-                onDelete={() => deleteMut.mutate(cls.id)}
-                archivePending={archiveMut.isPending}
-                deletePending={deleteMut.isPending}
-              />
-            </div>
+            {!isTeacher && (
+              <div className="absolute top-3 right-3">
+                <ActionMenu
+                  isActive={cls.active}
+                  onEdit={() => router.push(`/dashboard/classes/${cls.id}/edit`)}
+                  onArchive={() => archiveMut.mutate(cls.id)}
+                  onReactivate={() => reactivateMut.mutate(cls.id)}
+                  onDelete={() => deleteMut.mutate(cls.id)}
+                  archivePending={archiveMut.isPending}
+                  deletePending={deleteMut.isPending}
+                />
+              </div>
+            )}
             <a href={`/dashboard/classes/${cls.id}`} className="block">
               <div className="flex items-start gap-3 mb-3 pr-8">
                 <div className="p-2 bg-primary-50 rounded-lg">

@@ -67,6 +67,10 @@ jobs:
         with:
           node-version: 20
 
+      - name: Instala dependências do mobile
+        working-directory: apps/mobile
+        run: npm install
+
       - name: Build EAS (preview — distribuição interna)
         working-directory: apps/mobile
         env:

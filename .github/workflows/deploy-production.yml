@@ -99,14 +99,14 @@ jobs:
         working-directory: apps/mobile
         run: npm install
 
-      - name: Build EAS (production)
+      - name: Build EAS Android (production)
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli build --profile production --platform all --non-interactive
+        run: npx eas-cli build --profile production --platform android --non-interactive
 
-      - name: Submit para lojas (App Store + Play Store)
+      - name: Submit para Play Store
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx eas-cli submit --profile production --platform all --non-interactive --latest
+        run: npx eas-cli submit --profile production --platform android --non-interactive --latest

@@ -54,3 +54,21 @@ jobs:
           curl -f https://staging-api.apppresente.com.br/health
 
       # Frontend: Vercel detecta push no branch staging e faz deploy automático
+
+  build-mobile:
+    name: Build Mobile — Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build EAS (preview — distribuição interna)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli build --profile preview --platform all --non-interactive

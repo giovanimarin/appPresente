@@ -7,6 +7,7 @@ import { isAuthenticated, getUser, clearTokens } from '@/lib/auth';
 import {
   LayoutDashboard, MessageSquare, Calendar, FileText,
   Users, GraduationCap, LogOut, School, Menu, X, BookUser, CalendarCheck, UserCircle, DoorOpen,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +23,7 @@ const ROLE_LABELS: Record<Role, string> = {
 type NavGroup = {
   label: string;
   roles: string[];
-  items: { href: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string; roles: string[] }[];
+  items: { href: string; icon: LucideIcon; label: string; roles: string[] }[];
 };
 
 const navGroups: NavGroup[] = [

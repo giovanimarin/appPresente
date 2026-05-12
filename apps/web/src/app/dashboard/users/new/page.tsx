@@ -18,6 +18,7 @@ const schema = z.object({
     required_error: 'Selecione um perfil',
   }),
   phone: z.string().optional(),
+  cpf: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -32,15 +33,27 @@ export default function NewUserPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [error, setError] = useState('');
+  const [cpfDisplay, setCpfDisplay] = useState('');
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { role: 'TEACHER' },
   });
+
+  function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = digits;
+    if (digits.length > 9) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    else if (digits.length > 6) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    else if (digits.length > 3) masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    setCpfDisplay(masked);
+    setValue('cpf', digits || undefined);
+  }
 
   async function onSubmit(data: FormData) {
     setError('');
@@ -48,6 +61,7 @@ export default function NewUserPage() {
       await usersApi.create({
         ...data,
         phone: data.phone || undefined,
+        cpf: data.cpf || undefined,
       });
       await qc.invalidateQueries({ queryKey: ['users'] });
       router.push('/dashboard/users');
@@ -126,6 +140,17 @@ export default function NewUserPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Telefone (opcional)</label>
             <PhoneInput
               {...register('phone')}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF (opcional)</label>
+            <input
+              value={cpfDisplay}
+              onChange={handleCpfChange}
+              placeholder="000.000.000-00"
+              inputMode="numeric"
               className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
             />
           </div>

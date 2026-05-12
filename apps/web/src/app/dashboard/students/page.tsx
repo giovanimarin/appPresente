@@ -92,7 +92,7 @@ export default function StudentsPage() {
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none px-3 py-2 border border-gray-200 rounded-lg bg-white">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
-          Ver arquivados
+          Ver desativados
         </label>
       </div>
 
@@ -109,7 +109,7 @@ export default function StudentsPage() {
             <Link href={`/dashboard/students/${student.id}`} className="flex-1 min-w-0 hover:underline decoration-gray-300">
               <div className="flex items-center gap-2">
                 <p className={cn('font-medium text-sm truncate', student.active ? 'text-gray-900' : 'text-gray-400')}>{student.name}</p>
-                {!student.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Arquivado</span>}
+                {!student.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Desativado</span>}
               </div>
               <div className="flex gap-3 text-xs text-gray-500">
                 {student.class && <span>{student.class.name}{student.class.grade ? ` · ${student.class.grade}` : ''}</span>}

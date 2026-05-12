@@ -18,6 +18,7 @@ const schema = z.object({
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
   gender: z.enum(['masculino', 'feminino', 'outro', 'nao_informado', '']).optional(),
   notes: z.string().optional(),
+  cpf: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -27,6 +28,7 @@ export default function NewStudentPage() {
   const preselectedClassId = searchParams.get('classId') ?? '';
   const qc = useQueryClient();
   const [error, setError] = useState('');
+  const [cpfDisplay, setCpfDisplay] = useState('');
 
   const { data: classesData } = useQuery({
     queryKey: ['classes', { limit: 200 }],
@@ -39,6 +41,16 @@ export default function NewStudentPage() {
     defaultValues: { gender: '', classId: preselectedClassId },
   });
 
+  function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = digits;
+    if (digits.length > 9) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    else if (digits.length > 6) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    else if (digits.length > 3) masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    setCpfDisplay(masked);
+    setValue('cpf', digits || undefined);
+  }
+
   async function onSubmit(data: FormData) {
     setError('');
     try {
@@ -49,6 +61,7 @@ export default function NewStudentPage() {
         birthDate: data.birthDate || undefined,
         gender: data.gender || undefined,
         notes: data.notes || undefined,
+        cpf: data.cpf || undefined,
       });
       await qc.invalidateQueries({ queryKey: ['students'] });
       await qc.invalidateQueries({ queryKey: ['class-students', preselectedClassId] });
@@ -102,6 +115,16 @@ export default function NewStudentPage() {
               <input {...register('birthDate')} type="date"
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF (opcional)</label>
+            <input
+              value={cpfDisplay}
+              onChange={handleCpfChange}
+              placeholder="000.000.000-00"
+              inputMode="numeric"
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>

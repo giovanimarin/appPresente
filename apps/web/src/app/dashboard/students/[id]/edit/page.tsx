@@ -18,6 +18,7 @@ const schema = z.object({
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
   gender: z.enum(['masculino', 'feminino', 'outro', 'nao_informado', '']).optional(),
   notes: z.string().optional(),
+  cpf: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -26,6 +27,7 @@ export default function EditStudentPage() {
   const params = useParams<{ id: string }>();
   const qc = useQueryClient();
   const [error, setError] = useState('');
+  const [cpfDisplay, setCpfDisplay] = useState('');
 
   const { data: student, isLoading } = useQuery({
     queryKey: ['student', params.id],
@@ -39,21 +41,50 @@ export default function EditStudentPage() {
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<FormData>({ resolver: zodResolver(schema) });
   const classId = watch('classId');
 
+  function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = digits;
+    if (digits.length > 9) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    else if (digits.length > 6) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    else if (digits.length > 3) masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    setCpfDisplay(masked);
+    setValue('cpf', digits || undefined, { shouldDirty: true });
+  }
+
   useEffect(() => {
-    if (student) reset({
-      name: student.name,
-      classId: student.class?.id ?? '',
-      enrollmentCode: student.enrollmentCode ?? '',
-      birthDate: student.birthDate ? new Date(student.birthDate).toISOString().split('T')[0] : '',
-      gender: student.gender ?? '',
-      notes: student.notes ?? '',
-    });
+    if (student) {
+      const cpfDigits = student.cpf ?? '';
+      reset({
+        name: student.name,
+        classId: student.class?.id ?? '',
+        enrollmentCode: student.enrollmentCode ?? '',
+        birthDate: student.birthDate ? new Date(student.birthDate).toISOString().split('T')[0] : '',
+        gender: student.gender ?? '',
+        notes: student.notes ?? '',
+        cpf: cpfDigits,
+      });
+      if (cpfDigits) {
+        const d = cpfDigits;
+        let masked = d;
+        if (d.length > 9) masked = `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+        else if (d.length > 6) masked = `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+        else if (d.length > 3) masked = `${d.slice(0, 3)}.${d.slice(3)}`;
+        setCpfDisplay(masked);
+      }
+    }
   }, [student, reset]);
 
   async function onSubmit(data: FormData) {
     setError('');
     try {
-      await studentsApi.update(params.id, { ...data, birthDate: data.birthDate || undefined, gender: data.gender || undefined, enrollmentCode: data.enrollmentCode || undefined, notes: data.notes || undefined });
+      await studentsApi.update(params.id, {
+        ...data,
+        birthDate: data.birthDate || undefined,
+        gender: data.gender || undefined,
+        enrollmentCode: data.enrollmentCode || undefined,
+        notes: data.notes || undefined,
+        cpf: data.cpf || undefined,
+      });
       await qc.invalidateQueries({ queryKey: ['students'] });
       router.push('/dashboard/students');
     } catch (err: unknown) {
@@ -76,6 +107,16 @@ export default function EditStudentPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
             <input {...register('name')} className={cn('w-full px-3 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none', errors.name ? 'border-red-300' : 'border-gray-300')} />
             {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF (opcional)</label>
+            <input
+              value={cpfDisplay}
+              onChange={handleCpfChange}
+              placeholder="000.000.000-00"
+              inputMode="numeric"
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Turma</label>

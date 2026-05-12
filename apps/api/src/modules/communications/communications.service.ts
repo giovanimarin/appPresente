@@ -66,6 +66,7 @@ export class CommunicationsService {
         title: dto.title,
         body: dto.body,
         scope: dto.scope,
+        audienceFilter: dto.audienceFilter ?? 'ALL',
         schoolStatus: status,
         requiresConfirmation: dto.requiresConfirmation,
         autoReminder: dto.autoReminder,

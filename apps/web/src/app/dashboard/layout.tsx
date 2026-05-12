@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { isAuthenticated, getUser, clearTokens } from '@/lib/auth';
 import {
   LayoutDashboard, MessageSquare, Calendar, FileText,
-  Users, GraduationCap, LogOut, School, Menu, X, BookUser, CalendarCheck, UserCircle,
+  Users, GraduationCap, LogOut, School, Menu, X, BookUser, CalendarCheck, UserCircle, DoorOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,17 +19,42 @@ const ROLE_LABELS: Record<Role, string> = {
   TEACHER: 'Professor(a)',
 };
 
-const navItems = [
-  { href: '/dashboard',                  icon: LayoutDashboard, label: 'Painel',          roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/communications',   icon: MessageSquare,   label: 'Comunicados',     roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/agenda',           icon: Calendar,        label: 'Agenda',           roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/appointments',     icon: CalendarCheck,   label: 'Agendamentos',     roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/forms',            icon: FileText,        label: 'Formulários',      roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
-  { href: '/dashboard/users',            icon: Users,           label: 'Equipe',            roles: ['ADMIN'] },
-  { href: '/dashboard/classes',          icon: GraduationCap,   label: 'Turmas',            roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/students',         icon: BookUser,        label: 'Alunos',            roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/guardians',        icon: Users,           label: 'Responsáveis',      roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-  { href: '/dashboard/settings',         icon: School,          label: 'Escola',             roles: ['ADMIN'] },
+type NavGroup = {
+  label: string;
+  roles: string[];
+  items: { href: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string; roles: string[] }[];
+};
+
+const navGroups: NavGroup[] = [
+  {
+    label: 'Painel',
+    roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'],
+    items: [
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Painel', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+    ],
+  },
+  {
+    label: 'Escola',
+    roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'],
+    items: [
+      { href: '/dashboard/users',     icon: Users,        label: 'Equipe',       roles: ['ADMIN'] },
+      { href: '/dashboard/classes',   icon: GraduationCap, label: 'Turmas',      roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/students',  icon: BookUser,     label: 'Alunos',       roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/guardians', icon: Users,        label: 'Responsáveis', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/rooms',     icon: DoorOpen,     label: 'Salas',        roles: ['ADMIN', 'SECRETARY'] },
+      { href: '/dashboard/settings',  icon: School,       label: 'Configurações',roles: ['ADMIN'] },
+    ],
+  },
+  {
+    label: 'Agenda',
+    roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'],
+    items: [
+      { href: '/dashboard/communications', icon: MessageSquare, label: 'Comunicados',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/appointments',   icon: CalendarCheck, label: 'Agendamentos', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/forms',          icon: FileText,      label: 'Formulários',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+      { href: '/dashboard/agenda',         icon: Calendar,      label: 'Agenda',       roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+    ],
+  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -51,7 +76,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!checked) return null;
 
   const role = (user?.role ?? 'TEACHER') as Role;
-  const visibleItems = navItems.filter((item) => item.roles.includes(role));
+  const visibleGroups = navGroups
+    .map((g) => ({ ...g, items: g.items.filter((item) => item.roles.includes(role)) }))
+    .filter((g) => g.items.length > 0);
 
   function logout() {
     clearTokens();
@@ -85,27 +112,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {visibleItems.map((item) => {
-            const Icon = item.icon;
-            const active = item.href === '/dashboard'
-              ? pathname === '/dashboard'
-              : pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  active ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                )}
-              >
-                <Icon size={18} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+          {visibleGroups.map((group) => (
+            <div key={group.label}>
+              {group.label !== 'Painel' && (
+                <p className="px-3 mb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">{group.label}</p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.href === '/dashboard'
+                    ? pathname === '/dashboard'
+                    : pathname === item.href || pathname.startsWith(item.href + '/');
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        active ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                      )}
+                    >
+                      <Icon size={18} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* User */}

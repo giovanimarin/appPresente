@@ -2,14 +2,15 @@ import { prisma } from '../../config/database';
 import type { CreateClassDto, UpdateClassDto, CreateStudentDto, UpdateStudentDto } from './classes.schemas';
 
 const CLASS_SELECT = {
-  id: true, name: true, grade: true, shift: true, year: true, room: true, active: true,
+  id: true, name: true, grade: true, shift: true, year: true, room: true, roomId: true, active: true,
   coordinator: { select: { id: true, name: true } },
+  roomRel: { select: { id: true, name: true } },
   classTeachers: { select: { teacher: { select: { id: true, name: true } }, subject: true, isHomeroom: true } },
   _count: { select: { students: { where: { active: true } } } },
 } as const;
 
 const STUDENT_SELECT = {
-  id: true, name: true, enrollmentCode: true, birthDate: true, gender: true, notes: true, active: true,
+  id: true, name: true, enrollmentCode: true, birthDate: true, gender: true, notes: true, cpf: true, active: true,
   class: { select: { id: true, name: true, grade: true } },
   _count: { select: { studentGuardians: { where: { status: { in: ['ACTIVE', 'PENDING_INVITE'] } } } } },
 } as const;
@@ -39,15 +40,60 @@ export class ClassesService {
     return cls;
   }
 
+  private async _checkRoomConflict(schoolId: string, roomId: string, shift: string, excludeClassId?: string) {
+    const conflict = await prisma.class.findFirst({
+      where: {
+        schoolId,
+        roomId,
+        shift,
+        active: true,
+        ...(excludeClassId ? { id: { not: excludeClassId } } : {}),
+      },
+      select: { id: true, name: true },
+    });
+    if (conflict) {
+      throw { status: 409, code: 'ROOM_SHIFT_CONFLICT', message: `Esta sala já está ocupada por outra turma no mesmo turno (${conflict.name})` };
+    }
+  }
+
   async createClass(schoolId: string, dto: CreateClassDto) {
+    // Impede turmas idênticas (mesmo nome + série + turno + ano letivo)
+    if (dto.name && dto.shift && dto.year) {
+      const duplicate = await prisma.class.findFirst({
+        where: {
+          schoolId,
+          name: { equals: dto.name, mode: 'insensitive' },
+          grade: dto.grade ? { equals: dto.grade, mode: 'insensitive' } : null,
+          shift: dto.shift,
+          year: dto.year,
+        },
+      });
+      if (duplicate) {
+        throw { status: 409, code: 'CLASS_DUPLICATE', message: 'Já existe uma turma com este Nome, Série, Turno e Ano letivo' };
+      }
+    }
+
+    // Impede conflito de sala: mesma sala + mesmo turno
+    if (dto.roomId && dto.shift) {
+      await this._checkRoomConflict(schoolId, dto.roomId, dto.shift);
+    }
+
     return prisma.class.create({
-      data: { schoolId, name: dto.name, grade: dto.grade, shift: dto.shift, year: dto.year, room: dto.room, coordinatorId: dto.coordinatorId, unitId: dto.unitId, active: true },
+      data: { schoolId, name: dto.name, grade: dto.grade, shift: dto.shift, year: dto.year, room: dto.room, roomId: dto.roomId, coordinatorId: dto.coordinatorId, unitId: dto.unitId, active: true },
     });
   }
 
   async updateClass(schoolId: string, classId: string, dto: UpdateClassDto) {
     const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
     if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
+
+    // Conflito de sala: usa roomId e shift resolvidos (dto pode vir parcial)
+    const effectiveRoomId = dto.roomId !== undefined ? dto.roomId : cls.roomId;
+    const effectiveShift = dto.shift !== undefined ? dto.shift : cls.shift;
+    if (effectiveRoomId && effectiveShift) {
+      await this._checkRoomConflict(schoolId, effectiveRoomId, effectiveShift, classId);
+    }
+
     return prisma.class.update({ where: { id: classId }, data: dto });
   }
 
@@ -125,7 +171,7 @@ export class ClassesService {
       if (existing) throw { status: 409, code: 'ENROLLMENT_EXISTS', message: 'Matrícula já cadastrada nesta escola' };
     }
     return prisma.student.create({
-      data: { schoolId, classId: dto.classId, name: dto.name, enrollmentCode: dto.enrollmentCode, birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined, gender: dto.gender, notes: dto.notes, active: true },
+      data: { schoolId, classId: dto.classId, name: dto.name, enrollmentCode: dto.enrollmentCode, birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined, gender: dto.gender, notes: dto.notes, cpf: dto.cpf, active: true },
     });
   }
 
@@ -193,11 +239,15 @@ export class ClassesService {
     if (!student) throw { status: 404, code: 'STUDENT_NOT_FOUND', message: 'Aluno não encontrado' };
     return prisma.studentGuardian.findMany({
       where: { studentId },
-      include: { guardian: { select: { id: true, name: true, phone: true, email: true, activatedAt: true, pushToken: true, deviceType: true } } },
+      select: {
+        relationship: true, status: true, isPrimary: true,
+        kinshipDegree: true, isLegalGuardian: true, isFinancialGuardian: true,
+        guardian: { select: { id: true, name: true, phone: true, email: true, activatedAt: true, pushToken: true, deviceType: true } },
+      },
     });
   }
 
-  async linkGuardianToStudent(schoolId: string, studentId: string, dto: { phone?: string; cpf?: string; guardianId?: string; name?: string; email?: string; relationship?: string }) {
+  async linkGuardianToStudent(schoolId: string, studentId: string, dto: { phone?: string; cpf?: string; guardianId?: string; name?: string; email?: string; relationship?: string; kinshipDegree?: string; isLegalGuardian?: boolean; isFinancialGuardian?: boolean }) {
     if (!dto.phone && !dto.guardianId) throw { status: 400, code: 'PHONE_OR_GUARDIAN_REQUIRED', message: 'Informe o telefone ou o responsável' };
 
     const student = await prisma.student.findFirst({ where: { id: studentId, schoolId } });
@@ -243,10 +293,19 @@ export class ClassesService {
     const rel = dto.relationship?.trim() || 'responsavel';
     await prisma.studentGuardian.upsert({
       where: { studentId_guardianId: { studentId, guardianId: guardian.id } },
-      update: { status: 'PENDING_INVITE', relationship: rel },
+      update: {
+        status: 'PENDING_INVITE',
+        relationship: rel,
+        kinshipDegree: dto.kinshipDegree ?? null,
+        isLegalGuardian: dto.isLegalGuardian ?? false,
+        isFinancialGuardian: dto.isFinancialGuardian ?? false,
+      },
       create: {
         studentId, guardianId: guardian.id, schoolId,
         relationship: rel,
+        kinshipDegree: dto.kinshipDegree ?? null,
+        isLegalGuardian: dto.isLegalGuardian ?? false,
+        isFinancialGuardian: dto.isFinancialGuardian ?? false,
         isPrimary: ['mae', 'mãe', 'pai'].includes(rel.toLowerCase()),
         status: 'PENDING_INVITE',
       },

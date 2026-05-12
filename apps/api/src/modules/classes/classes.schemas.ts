@@ -3,9 +3,10 @@ import { z } from 'zod';
 export const createClassSchema = z.object({
   name: z.string().min(1).max(100),
   grade: z.string().max(50).optional(),
-  shift: z.enum(['manha', 'tarde', 'integral', 'noturno']).optional(),
+  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'manha', 'tarde', 'integral', 'noturno']).optional(),
   year: z.number().int().min(2020).max(2100).optional(),
   room: z.string().max(20).optional(),
+  roomId: z.string().uuid().optional(),
   coordinatorId: z.string().uuid().optional(),
   unitId: z.string().uuid().optional(),
 });
@@ -19,6 +20,7 @@ export const createStudentSchema = z.object({
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   gender: z.enum(['masculino', 'feminino', 'outro', 'nao_informado']).optional(),
   notes: z.string().optional(),
+  cpf: z.preprocess((v) => (v === '' ? undefined : v), z.string().length(11).optional()),
 });
 
 export const updateStudentSchema = createStudentSchema.partial().omit({ classId: true }).extend({

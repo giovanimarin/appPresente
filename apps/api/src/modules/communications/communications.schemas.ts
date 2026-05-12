@@ -6,6 +6,7 @@ export const createCommunicationSchema = z.object({
   body: z.string().min(1),
   scope: z.enum(['CLASS', 'STUDENT']),
   targetIds: z.array(z.string().uuid()).min(1, 'Selecione ao menos um destino'),
+  audienceFilter: z.enum(['ALL', 'LEGAL', 'FINANCIAL']).default('ALL'),
   requiresConfirmation: z.boolean().default(true),
   autoReminder: z.boolean().default(true),
   eventDate: z.string().datetime().optional(),

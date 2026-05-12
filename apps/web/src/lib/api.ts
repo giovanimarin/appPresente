@@ -193,6 +193,17 @@ export const uploadsApi = {
   delete: (id: string) => api.delete(`/uploads/${id}`),
 };
 
+// Rooms
+export const roomsApi = {
+  list: (params?: unknown) => api.get('/rooms', { params }),
+  create: (data: unknown) => api.post('/rooms', data),
+  get: (id: string) => api.get(`/rooms/${id}`),
+  update: (id: string, data: unknown) => api.put(`/rooms/${id}`, data),
+  deactivate: (id: string) => api.post(`/rooms/${id}/deactivate`),
+  reactivate: (id: string) => api.post(`/rooms/${id}/reactivate`),
+  delete: (id: string) => api.delete(`/rooms/${id}`),
+};
+
 // Appointments
 export const appointmentsApi = {
   // Staff

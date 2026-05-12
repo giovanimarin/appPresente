@@ -11,6 +11,8 @@ import { getUser } from '@/lib/auth';
 import { Plus, Loader2, Users, Upload, Search } from 'lucide-react';
 
 const SHIFT_LABELS: Record<string, string> = {
+  MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno',
+  // legado (migração dos valores antigos)
   manha: 'Manhã', tarde: 'Tarde', integral: 'Integral', noturno: 'Noturno',
 };
 
@@ -69,11 +71,13 @@ export default function ClassesPage() {
         <select value={shiftFilter} onChange={(e) => setShiftFilter(e.target.value)}
           className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
           <option value="">Todos os turnos</option>
-          {Object.entries(SHIFT_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          <option value="MATUTINO">Matutino</option>
+          <option value="VESPERTINO">Vespertino</option>
+          <option value="NOTURNO">Noturno</option>
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none px-3 py-2 border border-gray-200 rounded-lg bg-white">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
-          Ver arquivadas
+          Ver desativadas
         </label>
       </div>
 
@@ -104,7 +108,7 @@ export default function ClassesPage() {
                 <div className="p-2 bg-primary-50 rounded-lg">
                   <Users size={18} className="text-primary-600" />
                 </div>
-                {!cls.active && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Arquivada</span>}
+                {!cls.active && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Desativada</span>}
               </div>
               <h3 className="font-semibold text-gray-900">{cls.name}</h3>
               <div className="flex gap-3 mt-2 text-xs text-gray-500">

@@ -154,7 +154,7 @@ export default function GuardiansPage() {
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none px-3 py-2 border border-gray-200 rounded-lg bg-white">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
-          Ver arquivados
+          Ver desativados
         </label>
       </div>
 
@@ -210,7 +210,7 @@ export default function GuardiansPage() {
                     <p className={cn('font-medium text-sm truncate', g.active ? 'text-gray-900' : 'text-gray-400')}>
                       {g.name || <span className="italic text-gray-400">Sem nome</span>}
                     </p>
-                    {!g.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Arquivado</span>}
+                    {!g.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Desativado</span>}
                     {g.active && !g.activatedAt && <span className="text-xs px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded">Pendente</span>}
                   </div>
                   <p className="text-xs text-gray-500">

@@ -21,6 +21,7 @@ import formRoutes from './modules/forms/forms.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import platformRoutes from './modules/platform/platform.routes';
 import appointmentRoutes from './modules/appointments/appointments.routes';
+import roomRoutes from './modules/rooms/rooms.routes';
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use('/api/v1/forms', formRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/platform', platformRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
+app.use('/api/v1/rooms', roomRoutes);
 
 // ── 404 + Error Handler ──────────────────────────────────────────────────
 app.use(notFoundHandler);

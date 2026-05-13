@@ -1,0 +1,127 @@
+name: Staging — Ligar / Desligar
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "O que deseja fazer com o ambiente de staging?"
+        required: true
+        type: choice
+        options:
+          - start
+          - stop
+
+jobs:
+  toggle:
+    name: ${{ github.event.inputs.action == 'start' && '▶ Ligar Staging' || '⏹ Desligar Staging' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configura credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            sa-east-1
+
+      # ── STOP ────────────────────────────────────────────────────────────────
+
+      - name: Para o EC2 de staging
+        if: github.event.inputs.action == 'stop'
+        run: |
+          aws ec2 stop-instances \
+            --instance-ids ${{ vars.STAGING_EC2_INSTANCE_ID }}
+          echo "EC2 parando..."
+
+      - name: Para o banco RDS de staging
+        if: github.event.inputs.action == 'stop'
+        run: |
+          STATUS=$(aws rds describe-db-instances \
+            --db-instance-identifier presente-staging-postgres \
+            --query 'DBInstances[0].DBInstanceStatus' \
+            --output text)
+          if [ "$STATUS" == "available" ]; then
+            aws rds stop-db-instance \
+              --db-instance-identifier presente-staging-postgres
+            echo "RDS parando..."
+          else
+            echo "RDS já está $STATUS — nada a fazer."
+          fi
+
+      - name: Aguarda EC2 parar
+        if: github.event.inputs.action == 'stop'
+        run: |
+          aws ec2 wait instance-stopped \
+            --instance-ids ${{ vars.STAGING_EC2_INSTANCE_ID }}
+          echo "✅ EC2 parado."
+
+      - name: Resumo (stop)
+        if: github.event.inputs.action == 'stop'
+        run: |
+          echo "⏹ Ambiente de staging desligado."
+          echo "   EC2  : parado"
+          echo "   RDS  : parando (pode levar alguns minutos)"
+          echo ""
+          echo "⚠️  Atenção: a AWS reinicia automaticamente o RDS após 7 dias parado."
+          echo "   Se precisar de mais tempo, pare novamente após reiniciar."
+
+      # ── START ────────────────────────────────────────────────────────────────
+
+      - name: Inicia o banco RDS de staging
+        if: github.event.inputs.action == 'start'
+        run: |
+          STATUS=$(aws rds describe-db-instances \
+            --db-instance-identifier presente-staging-postgres \
+            --query 'DBInstances[0].DBInstanceStatus' \
+            --output text)
+          if [ "$STATUS" == "stopped" ]; then
+            aws rds start-db-instance \
+              --db-instance-identifier presente-staging-postgres
+            echo "RDS iniciando..."
+          else
+            echo "RDS já está $STATUS — nada a fazer."
+          fi
+
+      - name: Aguarda RDS ficar disponível
+        if: github.event.inputs.action == 'start'
+        run: |
+          echo "Aguardando RDS ficar disponível (pode levar 3–5 min)..."
+          aws rds wait db-instance-available \
+            --db-instance-identifier presente-staging-postgres
+          echo "✅ RDS disponível."
+
+      - name: Inicia o EC2 de staging
+        if: github.event.inputs.action == 'start'
+        run: |
+          aws ec2 start-instances \
+            --instance-ids ${{ vars.STAGING_EC2_INSTANCE_ID }}
+          echo "EC2 iniciando..."
+
+      - name: Aguarda EC2 ficar pronto
+        if: github.event.inputs.action == 'start'
+        run: |
+          aws ec2 wait instance-running \
+            --instance-ids ${{ vars.STAGING_EC2_INSTANCE_ID }}
+          echo "✅ EC2 rodando."
+
+      - name: Health check da API
+        if: github.event.inputs.action == 'start'
+        run: |
+          echo "Aguardando a aplicação subir..."
+          sleep 30
+          for i in $(seq 1 10); do
+            if curl -sf https://staging-api.apppresente.com.br/health; then
+              echo ""
+              echo "✅ API respondendo!"
+              break
+            fi
+            echo "Tentativa $i/10 — aguardando..."
+            sleep 15
+          done
+
+      - name: Resumo (start)
+        if: github.event.inputs.action == 'start'
+        run: |
+          echo "▶ Ambiente de staging disponível."
+          echo "   Web : https://staging.apppresente.com.br"
+          echo "   API : https://staging-api.apppresente.com.br/health"

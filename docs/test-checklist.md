@@ -1,34 +1,53 @@
 # Presente — Checklist de Testes Manuais
 
-> **Base URL:** http://192.168.2.59:3000  
-> **Banco zerado:** rode `./dev.sh --reset` antes de começar  
 > **Legenda:** ✅ OK · ❌ Falhou · ⚠️ Parcial · ⏭️ Pulado
 
 ---
 
-## PRÉ-REQUISITO: Ambiente rodando
+## AMBIENTES DISPONÍVEIS
 
+### Staging (preferencial para testes)
+
+| Serviço | URL |
+|---------|-----|
+| Web (dashboard + guardian) | https://staging.apppresente.com.br |
+| API health check | https://staging-api.apppresente.com.br/health |
+| App Android | APK disponível no painel Expo — perfil `preview` |
+
+> Staging é atualizado automaticamente a cada push no branch `staging`.  
+> Banco de dados de staging é **independente** do de produção.
+
+### Local (desenvolvimento)
+
+| Serviço | URL |
+|---------|-----|
+| Web | https://staging.apppresente.com.br |
+| API health check | https://staging-api.apppresente.com.br/health |
+
+**Pré-requisito local:**
 - [ ] Docker Desktop aberto (baleia verde na bandeja)
 - [ ] `./dev.sh --reset` executado sem erros
-- [ ] Terminal mostra "Presente rodando!" com o IP da rede
-- [ ] http://192.168.2.59:3000 carrega a tela inicial
-- [ ] http://192.168.2.59:3001/health retorna `{"status":"ok"}`
+- [ ] https://staging-api.apppresente.com.br/health retorna `{"status":"ok"}`
+
+---
+
+## PRÉ-REQUISITO: Banco populado
+
+Antes de iniciar os testes em staging, crie a escola e os dados base seguindo o **Módulo 1** e **Módulo 2** em ordem. Todos os módulos seguintes dependem desses dados.
 
 ---
 
 ## MÓDULO 1 — Plataforma (Admin SaaS)
 
-**URL:** http://192.168.2.59:3000/platform  
+**URL:** `/platform`  
 **Credenciais:** `admin@presente.com.br` / `Platform@2026`
 
 ### 1.1 Login na plataforma
-- [ ] Acessar http://192.168.2.59:3000/platform
 - [ ] Tela de login da plataforma aparece
 - [ ] Login com credenciais incorretas mostra erro
-- [ ] Login com `admin@presente.com.br / Platform@2026` redireciona para o painel
+- [ ] Login correto redireciona para o painel
 
 ### 1.2 Criação de escola
-- [ ] Painel lista escolas (vazio no início)
 - [ ] Clicar em "Nova Escola"
 - [ ] Preencher:
   - Nome: `Escola Girassol`
@@ -49,26 +68,26 @@
 
 ## MÓDULO 2 — Dashboard Escola (Admin/Diretor)
 
-**URL:** http://192.168.2.59:3000/login  
+**URL:** `/login`  
 **Credenciais:** `diretor@girassol.com.br` / `<senha temporária do passo 1.2>`
 
 ### 2.1 Primeiro acesso
-- [ ] Acessar http://192.168.2.59:3000/login
 - [ ] Login com e-mail e senha temporária
 - [ ] Redireciona para `/dashboard`
 - [ ] Painel inicial carrega com KPIs zerados
 
 ### 2.2 Configurações da escola
-- [ ] Ir em **Escola** (menu lateral)
+- [ ] Ir em **Configurações** (menu lateral → Escola)
 - [ ] Dados da escola aparecem preenchidos
+- [ ] Campo CEP: digitar um CEP válido → endereço preenchido automaticamente via ViaCEP
 - [ ] Editar nome ou telefone → Salvar sem erro
 
 ### 2.3 Cadastro de usuários (equipe)
 Ir em **Equipe** → criar cada um:
 
 #### Secretária
-- [ ] Criar: Nome `Secretária Ana`, E-mail `secretaria@girassol.com.br`, Função `SECRETARY`, Senha `Teste@2026`
-- [ ] Usuário aparece na lista
+- [ ] Criar: Nome `Secretária Ana`, E-mail `secretaria@girassol.com.br`, Função `SECRETARY`, CPF `111.444.777-35`, Senha `Teste@2026`
+- [ ] Usuário aparece na lista com CPF formatado
 
 #### Coordenadora
 - [ ] Criar: Nome `Coordenadora Bia`, E-mail `coord@girassol.com.br`, Função `COORDINATOR`, Senha `Teste@2026`
@@ -76,67 +95,107 @@ Ir em **Equipe** → criar cada um:
 #### Professor
 - [ ] Criar: Nome `Prof. Carlos`, E-mail `prof@girassol.com.br`, Função `TEACHER`, Senha `Teste@2026`
 
+#### CPF em equipe
+- [ ] Ao editar um usuário existente, campo CPF aparece com máscara automática ao digitar
+- [ ] Salvar com CPF → aparece no perfil
+
 #### Integridade referencial — usuário
 - [ ] Vincular o professor a uma turma (passo 2.5 deve ser feito antes)
 - [ ] Tentar excluir o professor permanentemente → deve bloquear com mensagem de erro
 - [ ] Desvincular o professor da turma → excluir permanente deve funcionar
 
-### 2.4 Cadastro de turmas
+### 2.4 Cadastro de salas
+Ir em **Salas** (menu lateral → Escola):
+
+- [ ] Página lista salas (vazia no início)
+- [ ] Criar: Nome `Sala 1`, Capacidade `30` → aparece na lista
+- [ ] Criar: Nome `Laboratório`, Capacidade `20` → aparece na lista
+- [ ] Criar: Nome `Sala 2`, Capacidade `35`
+- [ ] Editar nome de uma sala → salvar → atualiza na lista
+- [ ] Desativar sala → badge muda para "Inativo"
+- [ ] Marcar "Ver desativadas" → sala desativada aparece
+- [ ] Reativar sala → volta para ativo
+- [ ] Tentar criar sala com nome duplicado → erro "já existe uma sala com esse nome"
+- [ ] Sala vinculada a turma: tentar excluir → bloqueado com mensagem de erro
+- [ ] Sala sem turma: excluir → removida da lista
+
+### 2.5 Cadastro de turmas
 Ir em **Turmas** → criar:
 
-- [ ] Turma 1: Nome `1º Ano A`, Série `1º Ano`, Turno `Manhã`
-- [ ] Turma 2: Nome `3º Ano B`, Série `3º Ano`, Turno `Tarde`
+- [ ] Turma 1: Nome `1º Ano A`, Série `1º Ano`, Turno `Matutino`, Sala `Sala 1`
+- [ ] Turma 2: Nome `3º Ano B`, Série `3º Ano`, Turno `Vespertino`, Sala `Sala 2`
 - [ ] Ambas aparecem na listagem
 
+#### Conflito de sala por turno
+- [ ] Tentar criar Turma 3 com Sala `Sala 1` e Turno `Matutino` → erro "Sala já ocupada neste turno por 1º Ano A"
+- [ ] Criar Turma 3 com Sala `Sala 1` e Turno `Vespertino` → **deve funcionar** (turno diferente)
+- [ ] Editar `1º Ano A` para mudar a sala para `Laboratório` → salvar → sem conflito
+- [ ] Editar `1º Ano A` para mudar para a mesma sala e turno de outra turma → erro de conflito
+
 #### Integridade referencial — turma
-- [ ] Adicionar aluno à turma (passo 2.5)
+- [ ] Adicionar aluno à turma (passo 2.6)
 - [ ] Tentar excluir a turma permanentemente → deve bloquear (turma tem alunos)
 - [ ] Tentar excluir com professor vinculado → deve bloquear
 
-### 2.5 Cadastro de alunos
+### 2.6 Cadastro de alunos
 Ir em **Alunos** → adicionar:
 
-- [ ] Aluno 1: Nome `Lucas Silva`, Matrícula `2026001`, Turma `1º Ano A`
+- [ ] Aluno 1: Nome `Lucas Silva`, Matrícula `2026001`, Turma `1º Ano A`, CPF `529.982.247-25`
 - [ ] Aluno 2: Nome `Maria Souza`, Matrícula `2026002`, Turma `1º Ano A`
 - [ ] Aluno 3: Nome `Pedro Lima`, Matrícula `2026003`, Turma `3º Ano B`
+- [ ] CPF do Lucas aparece formatado `529.982.247-25` na tela de detalhe
+- [ ] Campo CPF no formulário mascara automaticamente ao digitar
 
 #### Integridade referencial — aluno
-- [ ] Vincular responsável ao Lucas (passo 2.7)
+- [ ] Vincular responsável ao Lucas (passo 2.8)
 - [ ] Tentar excluir o Lucas permanentemente → deve bloquear (tem responsável vinculado)
 
-### 2.6 Importação CSV (com CPF)
+### 2.7 Importação CSV
 - [ ] Em **Alunos**, clicar em "Importar CSV"
 - [ ] Baixar o modelo CSV
-- [ ] Verificar colunas: Nome do Aluno, Turma, Série, Matrícula, Responsável, E-mail, Telefone, **CPF Responsável**, Parentesco
 - [ ] Preencher 3 linhas com dados novos (turma `5º Ano A`), incluindo CPF no formato `XXX.XXX.XXX-XX`
 - [ ] Upload do CSV preenchido
-- [ ] Prévia mostra coluna CPF formatada em `font-mono`
+- [ ] Prévia mostra coluna CPF formatada
 - [ ] Clicar em "Importar" — contadores corretos (alunos, turmas, responsáveis criados)
 - [ ] Turma `5º Ano A` aparece em **Turmas** com os alunos importados
-- [ ] Em **Responsáveis**, responsáveis importados exibem CPF formatado
 
-### 2.7 Cadastro manual de responsáveis
+### 2.8 Cadastro manual de responsáveis
 Ir em **Responsáveis**:
 
 - [ ] Clicar em "Novo responsável"
-- [ ] Preencher: Nome `Responsável Teste`, Telefone `(11) 99999-0001`, E-mail `giovanimarin@gmail.com`, CPF `123.456.789-00`
-- [ ] Responsável aparece na lista com CPF `123.456.789-00`
+- [ ] Preencher: Nome `Responsável Teste`, Telefone `(11) 99999-0001`, E-mail `giovanimarin@gmail.com`, CPF `123.456.789-09`
+- [ ] Responsável aparece na lista com CPF `123.456.789-09`
 - [ ] Tentar criar outro responsável com o mesmo CPF → erro "CPF já em uso"
 - [ ] Tentar criar com mesmo telefone → erro "Telefone já em uso"
 
-### 2.8 Vinculação responsável ↔ aluno
+### 2.9 Vinculação responsável ↔ aluno (com campos de vínculo)
 Na tela do aluno `Lucas Silva`:
 
 - [ ] Ir em **Alunos** → clicar em Lucas Silva
 - [ ] Seção "Responsáveis" aparece
-- [ ] Clicar em "Vincular responsável"
-- [ ] Buscar por CPF ou telefone → Responsável Teste encontrado
-- [ ] Selecionar parentesco → Vincular
-- [ ] Lucas aparece com o responsável listado
+- [ ] Clicar em "Vincular responsável existente"
+- [ ] Buscar por nome/e-mail → Responsável Teste encontrado
+- [ ] Preencher:
+  - Parentesco: `Pai`
+  - Marcar "Responsável Legal" ✅
+  - Marcar "Responsável Financeiro" ✅
+- [ ] Vincular → responsável aparece na lista com badges **Legal** (azul) e **Financeiro** (âmbar)
+- [ ] Badge de parentesco exibe `Pai`
+
+#### Novo responsável inline (sem cadastro prévio)
+- [ ] Na tela do aluno, aba "Novo responsável"
+- [ ] Preencher: Nome, E-mail, Telefone, CPF `987.654.321-00`
+- [ ] Campos de vínculo: Parentesco `Mãe`, Legal ✅, Financeiro ❌
+- [ ] Criar e vincular → responsável criado e aparece com badge **Legal** apenas
+- [ ] Responsável criado aparece em **Responsáveis** com CPF formatado
+
+#### Editar vínculo existente
+- [ ] Clicar em vínculo existente → editar campos de parentesco/legal/financeiro
+- [ ] Salvar → badges atualizados na tela do aluno
 
 Na tela do responsável:
 - [ ] Ir em **Responsáveis** → clicar em Responsável Teste
-- [ ] Seção "Alunos vinculados" mostra Lucas Silva
+- [ ] Seção "Alunos vinculados" mostra Lucas Silva com parentesco e badges
 
 ---
 
@@ -148,26 +207,34 @@ Ir em **Comunicados** → "Novo comunicado":
 - [ ] Tipo: `Aviso`, Título: `Reunião de pais — Maio`
 - [ ] Mensagem: `Reunião no dia 15/05 às 19h no auditório.`
 - [ ] Escopo: `Por turma` → selecionar `1º Ano A`
+- [ ] **Público-alvo:** `Todos os responsáveis`
 - [ ] Opção "Exigir confirmação de leitura": marcada
 - [ ] **Não** marcar "Enviar imediatamente"
 - [ ] Clicar em "Salvar rascunho" → status `Rascunho`
 
-### 3.2 Criar e enviar comunicado urgente
-- [ ] Tipo `Urgente`, Título `Aulas suspensas amanhã`
-- [ ] Turmas `1º Ano A` e `3º Ano B`, enviar imediatamente
-- [ ] Status `Enviado` na lista
+### 3.2 Criar comunicado urgente com filtro de público
+- [ ] Tipo `Urgente`, Título `Aviso financeiro`
+- [ ] Turma `1º Ano A`, **Público-alvo:** `Responsável Financeiro`
+- [ ] Enviar imediatamente → status `Enviado`
+- [ ] Somente responsáveis marcados como financeiros devem receber
 
-### 3.3 Criar comunicado por aluno
+### 3.3 Comunicado para responsáveis legais
+- [ ] Tipo `Informativo`, Título `Autorização de viagem`
+- [ ] Escopo por turma, **Público-alvo:** `Responsável Legal`
+- [ ] Enviar → status `Enviado`
+
+### 3.4 Criar comunicado por aluno
 - [ ] Tipo `Informativo`, Título `Nota de matemática`, escopo por aluno → `Lucas Silva`
+- [ ] Público-alvo: `Todos os responsáveis`
 - [ ] Enviar imediatamente → status `Enviado`
 
-### 3.4 Enviar rascunho manualmente
+### 3.5 Enviar rascunho manualmente
 - [ ] Localizar "Reunião de pais" (rascunho) → clicar no ícone de envio → status `Enviado`
 
-### 3.5 Cancelar comunicado
+### 3.6 Cancelar comunicado
 - [ ] Localizar comunicado enviado → cancelar → status `Cancelado`
 
-### 3.6 Exportar relatório de leitura
+### 3.7 Exportar relatório de leitura
 - [ ] Comunicado com status `Enviado` → download CSV → colunas: Responsável, Aluno, Lido, Data/Hora
 
 ---
@@ -202,11 +269,11 @@ Ir em **Formulários**:
 ### 5.2 Templates pré-definidos
 - [ ] Seção de templates aparece com botões (Justificativa de Falta, Atestado Médico, Saída Antecipada)
 - [ ] Clicar em "Criar" para `Justificativa de Falta` → formulário criado
-- [ ] **Botão "Justificativa de Falta" desaparece** da seção de templates (não permite duplicata)
-- [ ] Criar os outros dois templates → seção de templates some completamente quando todos criados
+- [ ] Botão "Justificativa de Falta" desaparece da seção de templates
+- [ ] Criar os outros dois templates → seção de templates some completamente
 
 ### 5.3 Ver submissões
-- [ ] Clicar no formulário → lista de submissões (preenchida no módulo 7)
+- [ ] Clicar no formulário → lista de submissões (preenchida no módulo 8)
 
 ---
 
@@ -216,32 +283,32 @@ Ir em **Formulários**:
 **Credenciais:** `secretaria@girassol.com.br / Teste@2026`
 
 - [ ] Login funciona → dashboard carrega
-- [ ] Menu lateral **não** exibe "Equipe"
-- [ ] Menu lateral **não** exibe "Escola"
-- [ ] Exibe: Painel, Comunicados, Agenda, Agendamentos, Formulários, Turmas, Alunos, Responsáveis
+- [ ] Menu lateral **não** exibe "Equipe" nem "Configurações"
+- [ ] Menu lateral **exibe** "Salas" (Secretária tem acesso)
+- [ ] Exibe: Painel, Turmas, Alunos, Responsáveis, Salas, Comunicados, Agenda, Agendamentos, Formulários
 - [ ] Pode criar comunicados
-- [ ] Pode ver e gerenciar responsáveis
+- [ ] Pode gerenciar salas
 
 ### 6.2 Login como Coordenadora
 **Credenciais:** `coord@girassol.com.br / Teste@2026`
 
 - [ ] Login funciona → dashboard carrega
-- [ ] Menu **não** exibe "Equipe", "Escola" nem "Formulários"
-- [ ] Exibe: Painel, Comunicados, Agenda, Agendamentos, Turmas, Alunos, Responsáveis
+- [ ] Menu **não** exibe "Equipe", "Configurações", "Salas" nem "Formulários"
+- [ ] Exibe: Painel, Turmas, Alunos, Responsáveis, Comunicados, Agenda, Agendamentos
 - [ ] Pode criar comunicados
-- [ ] Pode ver agendamentos
 
 ### 6.3 Login como Professor
 **Credenciais:** `prof@girassol.com.br / Teste@2026`
 
 - [ ] Login funciona → dashboard carrega
-- [ ] Menu exibe apenas: Painel, Comunicados, Agenda, Agendamentos, Turmas, Alunos, Responsáveis
 - [ ] Header mostra aviso "Visualizando apenas suas turmas"
-- [ ] **Turmas:** exibe apenas as turmas onde o professor está vinculado
-- [ ] **Alunos:** exibe apenas alunos das turmas do professor
-- [ ] **Responsáveis:** exibe apenas responsáveis de alunos das turmas do professor
+- [ ] Menu **não** exibe "Equipe", "Configurações", "Salas" nem "Formulários"
+- [ ] **Turmas:** exibe apenas turmas vinculadas ao professor
+- [ ] **Alunos:** exibe apenas alunos dessas turmas
+- [ ] **Responsáveis:** exibe apenas responsáveis desses alunos
 - [ ] Tentar acessar `/dashboard/users` diretamente → redireciona ou nega acesso
 - [ ] Tentar acessar `/dashboard/settings` diretamente → redireciona ou nega acesso
+- [ ] Tentar acessar `/dashboard/rooms` diretamente → redireciona ou nega acesso
 
 ### 6.4 Vincular professor à turma (como Admin)
 - [ ] Voltar para o Admin → ir em **Turmas** → `1º Ano A` → aba "Professores"
@@ -257,76 +324,57 @@ Ir em **Agendamentos** (logado como Admin ou Professor):
 
 ### 7.1 Criar horário avulso
 - [ ] Clicar em "Novo Horário"
-- [ ] Toggle "Horário recorrente" está desativado por padrão
-- [ ] Preencher:
-  - Título: `Atendimento — Semana de Provas`
-  - Data/Hora: próxima semana às 14h00
-  - Duração: 30 min
-  - Quem pode reservar: `Todos os responsáveis`
-- [ ] Criar → slot aparece na lista com badge `Disponível`
+- [ ] Preencher: Título `Atendimento — Semana de Provas`, data futura, duração 30 min, `Todos os responsáveis`
+- [ ] Criar → slot aparece com badge `Disponível`
 
 ### 7.2 Criar horário por turma
-- [ ] Novo Horário, Título `Reunião 1º Ano A`, data futura
-- [ ] Quem pode reservar: `Responsáveis de uma turma` → selecionar `1º Ano A`
-- [ ] Criar → slot aparece com nome da turma na lista
+- [ ] Novo Horário, Título `Reunião 1º Ano A`, `Responsáveis de uma turma` → `1º Ano A`
+- [ ] Criar → slot aparece com nome da turma
 
 ### 7.3 Criar série recorrente semanal
 - [ ] Novo Horário, Título `Atendimento Semanal`
-- [ ] Ativar toggle "Horário recorrente"
-- [ ] Tipo: `Semanal`
-- [ ] Selecionar dias: `Qua` e `Sex`
-- [ ] Horário: `16:00`
-- [ ] A partir de: hoje, Até: 4 semanas à frente
-- [ ] Preview exibe: "Toda semana às 16:00 nas Quartas, Sextas, até ..."
-- [ ] Clicar em "Criar Série"
-- [ ] Múltiplos slots aparecem na lista, todos com badge `Recorrente`
+- [ ] Ativar toggle "Horário recorrente", Tipo `Semanal`
+- [ ] Selecionar dias: `Qua` e `Sex`, Horário `16:00`, período de 4 semanas
+- [ ] Preview exibe as datas
+- [ ] Clicar em "Criar Série" → múltiplos slots com badge `Recorrente`
 
 ### 7.4 Criar série quinzenal
-- [ ] Novo Horário, Título `Reunião Quinzenal`
-- [ ] Recorrente: `Quinzenal`, dia `Ter`, horário `10:00`
-- [ ] Período: 2 meses à frente
+- [ ] Novo Horário, Título `Reunião Quinzenal`, Recorrente `Quinzenal`, dia `Ter`, horário `10:00`, 2 meses
 - [ ] Criar → slots a cada 2 semanas nas terças
 
 ### 7.5 Cancelar horário avulso
-- [ ] Localizar slot avulso disponível → clicar no ícone de cancelamento (🚫)
-- [ ] Confirmar → status muda para `Cancelado`
+- [ ] Localizar slot avulso disponível → cancelar → status `Cancelado`
 
 ### 7.6 Cancelar horário recorrente
-- [ ] Localizar slot da série "Atendimento Semanal" → clicar em cancelar
-- [ ] Modal aparece com 3 opções:
-  - `Somente este horário`
-  - `Este e os próximos da série`
-  - `Todos os horários da série`
+- [ ] Localizar slot da série → cancelar → modal com 3 opções
 - [ ] Selecionar "Este e os próximos" → confirmar
-- [ ] Slots a partir da data selecionada mudam para `Cancelado`
-- [ ] Slots anteriores permanecem `Disponível`
+- [ ] Slots a partir dessa data: `Cancelado`; anteriores: `Disponível`
 
 ### 7.7 Excluir horário disponível
-- [ ] Localizar slot disponível sem reserva → ícone de lixeira → confirmar
-- [ ] Slot removido da lista
-- [ ] Tentar excluir slot com reserva (status `Reservado`) → botão de lixeira não aparece
+- [ ] Slot sem reserva → lixeira → confirmar → removido
+- [ ] Slot com reserva → botão de lixeira não aparece
 
 ### 7.8 Filtros
-- [ ] Filtrar por status `Reservado` → mostra apenas os reservados
-- [ ] Filtrar por data → mostra apenas slots a partir da data escolhida
+- [ ] Filtrar por status `Reservado` → mostra apenas reservados
+- [ ] Filtrar por data → mostra apenas slots a partir da data
 - [ ] Limpar filtros → volta a mostrar tudo
 
 ---
 
 ## MÓDULO 8 — App do Responsável
 
-> **Pré-requisito:** Responsável `giovanimarin@gmail.com` criado e vinculado ao Lucas Silva (passo 2.7/2.8)
+> **Pré-requisito:** Responsável `giovanimarin@gmail.com` criado e vinculado ao Lucas Silva (passo 2.8/2.9)
 
-**URL:** http://192.168.2.59:3000/guardian
+**URL:** `/guardian`
 
 ### 8.1 Login via OTP
-- [ ] Acessar http://192.168.2.59:3000/guardian
 - [ ] Digitar `giovanimarin@gmail.com` → "Enviar código"
 - [ ] Checar e-mail — código de 6 dígitos recebido
 - [ ] Digitar código → login → redireciona para `/guardian/feed`
 
 ### 8.2 Feed de avisos
 - [ ] Comunicados enviados para Lucas Silva aparecem
+- [ ] Comunicado com público-alvo `Legal` aparece (responsável é legal)
 - [ ] Tipo urgente tem destaque visual diferente
 - [ ] Ponto vermelho indica não lido
 - [ ] Clicar em "Confirmar leitura" → botão some, aparece checkmark verde
@@ -335,36 +383,28 @@ Ir em **Agendamentos** (logado como Admin ou Professor):
 - [ ] Aba **Agenda** → eventos dos passos 4.1/4.2 aparecem agrupados por data
 
 ### 8.4 Agendamentos — ver horários disponíveis
-- [ ] Aba **Reuniões** (CalendarCheck) na barra inferior
-- [ ] Aba "Horários Disponíveis" está ativa por padrão
+- [ ] Aba **Reuniões** na barra inferior
 - [ ] Slots criados no módulo 7 aparecem (avulso + série)
-  - Apenas slots com `scope=ALL` ou da turma do Lucas (`1º Ano A`) devem aparecer
-- [ ] Card mostra: título, data, hora, duração, nome do professor/staff
+- [ ] Apenas slots com `scope=ALL` ou da turma do Lucas (`1º Ano A`) devem aparecer
 
 ### 8.5 Reservar horário
-- [ ] Clicar em um horário disponível → modal de confirmação abre
-- [ ] Se responsável tem mais de 1 filho: seletor de aluno aparece
+- [ ] Clicar em um horário disponível → modal de confirmação
 - [ ] Selecionar aluno `Lucas Silva`
-- [ ] Adicionar observação: `Quero conversar sobre as notas`
-- [ ] Clicar em "Confirmar" → banner verde "Agendamento confirmado!"
-- [ ] Slot some da lista de "Horários Disponíveis"
+- [ ] Adicionar observação → Confirmar → banner verde
+- [ ] Slot some da lista de disponíveis
 
 ### 8.6 Ver meus agendamentos
 - [ ] Aba "Meus Agendamentos"
-- [ ] Reserva aparece com status `Confirmado`, nome do professor, data/hora, aluno
-- [ ] Observação aparece em itálico
+- [ ] Reserva aparece com status `Confirmado`, data/hora, aluno, observação
 
 ### 8.7 Cancelar agendamento
-- [ ] Na aba "Meus Agendamentos", localizar reserva futura
 - [ ] Clicar em "Cancelar agendamento" → confirmar
 - [ ] Status muda para `Cancelado`
-- [ ] Slot volta a aparecer em "Horários Disponíveis" (disponível novamente)
+- [ ] Slot volta a aparecer em disponíveis
 
 ### 8.8 Cancelamento pelo staff
-- [ ] Como Admin, ir em **Agendamentos**
-- [ ] Localizar slot com status `Reservado` → expandir → ver dados do responsável e aluno
-- [ ] Clicar em "Cancelar agendamento" → confirmar
-- [ ] Slot volta para `Disponível` na lista do staff
+- [ ] Como Admin → **Agendamentos** → slot `Reservado` → cancelar
+- [ ] Slot volta para `Disponível`
 - [ ] No app do responsável, reserva aparece como `Cancelado`
 
 ### 8.9 Pedidos (formulários)
@@ -381,22 +421,22 @@ Ir em **Agendamentos** (logado como Admin ou Professor):
 
 ## MÓDULO 9 — Verificação cruzada staff × responsável
 
-- [ ] Como responsável: confirmar leitura de comunicado com "Confirmar leitura"
-- [ ] Como admin: em **Comunicados** → download CSV → linha do responsável mostra `Lido = Sim`
-- [ ] Como admin: em **Agendamentos** → slot reservado mostra nome do responsável e aluno
-- [ ] Como responsável: formulário enviado aparece no dashboard do admin em **Formulários**
-- [ ] Admin resolve formulário com nota → responsável vê status `Resolvido`
+- [ ] Como responsável: confirmar leitura de comunicado
+- [ ] Como admin: download CSV do comunicado → linha do responsável mostra `Lido = Sim`
+- [ ] Como admin: slot reservado mostra nome do responsável e aluno
+- [ ] Como responsável: formulário enviado aparece no admin em **Formulários**
+- [ ] Admin resolve formulário → responsável vê status `Resolvido`
 
 ---
 
 ## MÓDULO 10 — Integridade referencial
 
 ### 10.1 Responsável vinculado
-- [ ] Tentar excluir permanentemente responsável com aluno vinculado → erro com mensagem "vinculado a X aluno(s)"
+- [ ] Tentar excluir responsável com aluno vinculado → erro "vinculado a X aluno(s)"
 - [ ] Desvincular aluno → exclusão funciona
 
 ### 10.2 Aluno com responsável
-- [ ] Tentar excluir aluno com responsável vinculado → erro bloqueando exclusão
+- [ ] Tentar excluir aluno com responsável vinculado → erro bloqueando
 - [ ] Desvincular responsável → exclusão funciona
 
 ### 10.3 Turma com alunos ou professores
@@ -404,50 +444,72 @@ Ir em **Agendamentos** (logado como Admin ou Professor):
 - [ ] Turma com professor vinculado: exclusão bloqueada
 - [ ] Remover alunos e professor → exclusão funciona
 
-### 10.4 Usuário professor vinculado a turma
+### 10.4 Sala vinculada a turma
+- [ ] Tentar excluir sala em uso por uma turma → bloqueado com mensagem de erro
+- [ ] Remover sala da turma (editar turma) → exclusão da sala funciona
+
+### 10.5 Usuário professor vinculado a turma
 - [ ] Tentar excluir professor vinculado a turma → bloqueado
 - [ ] Remover da turma → exclusão funciona
 
 ---
 
-## MÓDULO 11 — CPF do Responsável
+## MÓDULO 11 — CPF (Equipe e Alunos)
 
-- [ ] Cadastrar responsável com CPF → aparece formatado `XXX.XXX.XXX-XX` na lista
-- [ ] Tentar cadastrar segundo responsável com mesmo CPF → erro "CPF já em uso"
-- [ ] Editar CPF de um responsável → campo mascara automaticamente ao digitar
-- [ ] Importação CSV com CPF: responsável encontrado pelo CPF (não cria duplicata se CPF já existe)
-- [ ] Importação CSV sem CPF: responsável encontrado pelo telefone (comportamento anterior mantido)
-- [ ] Na tela de detalhe do responsável: CPF editável com máscara
+### 11.1 CPF em equipe
+- [ ] Cadastrar usuário com CPF → aparece formatado `XXX.XXX.XXX-XX` na lista/perfil
+- [ ] Campo CPF mascara automaticamente ao digitar
+- [ ] Editar usuário existente → campo CPF aparece preenchido com máscara
+
+### 11.2 CPF em alunos
+- [ ] Cadastrar aluno com CPF → aparece formatado na tela de detalhe
+- [ ] Campo CPF mascara automaticamente ao digitar
+- [ ] Editar aluno existente → campo CPF aparece preenchido com máscara
 
 ---
 
-## MÓDULO 12 — Testes de borda
+## MÓDULO 12 — CPF do Responsável
 
-### 12.1 Validações
+- [ ] Cadastrar responsável com CPF → aparece formatado `XXX.XXX.XXX-XX` na lista
+- [ ] Tentar cadastrar segundo responsável com mesmo CPF → erro "CPF já em uso"
+- [ ] Editar CPF de um responsável → campo mascara automaticamente
+- [ ] Importação CSV com CPF: responsável encontrado pelo CPF (não cria duplicata)
+- [ ] Importação CSV sem CPF: responsável encontrado pelo telefone (comportamento anterior)
+- [ ] Na tela de detalhe do responsável: CPF editável com máscara
+- [ ] Novo responsável inline (tela do aluno): campo CPF com máscara
+
+---
+
+## MÓDULO 13 — Testes de borda
+
+### 13.1 Validações
 - [ ] Criar comunicado sem turma → erro inline
 - [ ] OTP com e-mail inválido → erro
 - [ ] Código OTP errado → erro
 - [ ] Código OTP expirado (após 10 min) → erro adequado
 - [ ] Criar horário de agendamento sem título → erro inline
-- [ ] Criar série recorrente sem selecionar dia da semana → erro inline
+- [ ] Criar série recorrente sem selecionar dia → erro inline
 - [ ] Reservar horário sem selecionar aluno (multi-filhos) → erro inline
+- [ ] Criar sala com nome duplicado → erro inline
+- [ ] Criar turma com sala e turno já ocupados → erro com nome da turma conflitante
 
-### 12.2 Permissões de acesso direto por URL
+### 13.2 Permissões de acesso direto por URL
 - [ ] Professor: acessar `/dashboard/users` → redireciona ou nega
 - [ ] Professor: acessar `/dashboard/settings` → redireciona ou nega
 - [ ] Professor: acessar `/dashboard/forms` → redireciona ou nega
+- [ ] Professor: acessar `/dashboard/rooms` → redireciona ou nega
 - [ ] Responsável: acessar `/dashboard` → redireciona para `/guardian`
 - [ ] Token expirado → redireciona para login automaticamente
 
-### 12.3 Estados vazios
+### 13.3 Estados vazios
 - [ ] Agenda sem eventos → "Sem eventos próximos"
 - [ ] Feed sem comunicados → "Tudo em dia!"
 - [ ] Agendamentos sem horários disponíveis → mensagem adequada
 - [ ] Meus agendamentos vazio → mensagem adequada
-- [ ] Responsáveis sem resultado no filtro → mensagem adequada
+- [ ] Salas: lista vazia → estado vazio adequado
 
-### 12.4 Rede (outro dispositivo)
-- [ ] Acessar http://192.168.2.59:3000 de celular na mesma rede Wi-Fi
+### 13.4 Rede (staging — app mobile)
+- [ ] Instalar APK do perfil `preview` disponível no painel Expo
 - [ ] Login do responsável funciona
 - [ ] Aba Reuniões carrega e permite reservar
 
@@ -467,8 +529,9 @@ Ir em **Agendamentos** (logado como Admin ou Professor):
 | 8. App Responsável | | |
 | 9. Verificação cruzada | | |
 | 10. Integridade referencial | | |
-| 11. CPF do Responsável | | |
-| 12. Testes de borda | | |
+| 11. CPF (Equipe e Alunos) | | |
+| 12. CPF do Responsável | | |
+| 13. Testes de borda | | |
 
 ---
 
@@ -485,4 +548,4 @@ Ir em **Agendamentos** (logado como Admin ou Professor):
 
 ---
 
-*Atualizado em 29/04/2026 — Presente v1.5*
+*Atualizado em 12/05/2026 — Presente v1.6*

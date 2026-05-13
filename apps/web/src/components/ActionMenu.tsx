@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreVertical, Pencil, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, PowerOff, Power, Trash2 } from 'lucide-react';
 
 interface ActionMenuProps {
   isActive: boolean;
@@ -48,14 +48,14 @@ export default function ActionMenu({
                 disabled={archivePending}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-orange-600 hover:bg-orange-50 disabled:opacity-50"
               >
-                <Archive size={14} /> Arquivar
+                <PowerOff size={14} /> Desativar
               </button>
             ) : (
               <button
                 onClick={() => { onReactivate(); close(); }}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-600 hover:bg-green-50"
               >
-                <RotateCcw size={14} /> Reativar
+                <Power size={14} /> Ativar
               </button>
             )}
 

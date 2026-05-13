@@ -7,7 +7,7 @@ import type { CreateUserDto, UpdateUserDto } from './users.schemas';
 
 const USER_SELECT = {
   id: true, name: true, email: true, role: true,
-  phone: true, avatarUrl: true, active: true,
+  phone: true, cpf: true, avatarUrl: true, active: true,
   lastLoginAt: true, createdAt: true,
   unit: { select: { id: true, name: true } },
 } as const;
@@ -46,6 +46,7 @@ export class UsersService {
         passwordHash,
         role: dto.role as 'SECRETARY' | 'COORDINATOR' | 'TEACHER',
         phone: dto.phone,
+        cpf: dto.cpf,
         unitId: dto.unitId,
         active: true,
       },

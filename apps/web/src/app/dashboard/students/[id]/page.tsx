@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { studentsApi, guardiansApi } from '@/lib/api';
-import { ArrowLeft, Loader2, Pencil, Plus, X, Phone, Mail, UserCircle, Search, UserCheck, UserPlus } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Plus, X, Phone, Mail, UserCircle, Search, UserCheck, UserPlus, Shield, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { formatPhone, maskPhone, cn } from '@/lib/utils';
 
@@ -17,6 +17,9 @@ type StudentGuardian = {
   relationship: string;
   status: string;
   isPrimary: boolean;
+  kinshipDegree?: string | null;
+  isLegalGuardian: boolean;
+  isFinancialGuardian: boolean;
   guardian: {
     id: string; name: string; phone: string; email?: string;
     activatedAt?: string; pushToken?: string; deviceType?: string;
@@ -41,8 +44,14 @@ export default function StudentDetailPage() {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [newCpfDisplay, setNewCpfDisplay] = useState('');
+  const [newCpfDigits, setNewCpfDigits] = useState('');
 
+  // Shared relationship fields
   const [relationship, setRelationship] = useState('responsavel');
+  const [kinshipDegree, setKinshipDegree] = useState('');
+  const [isLegalGuardian, setIsLegalGuardian] = useState(false);
+  const [isFinancialGuardian, setIsFinancialGuardian] = useState(false);
 
   const { data: student, isLoading } = useQuery({
     queryKey: ['student', params.id],
@@ -54,10 +63,11 @@ export default function StudentDetailPage() {
     queryFn: () => studentsApi.guardians(params.id).then((r) => r.data),
   });
 
+  const searchTrimmed = guardianSearch.trim();
   const { data: allGuardiansData } = useQuery({
-    queryKey: ['guardians-for-link'],
-    queryFn: () => guardiansApi.list({ limit: 500 }).then((r) => r.data),
-    enabled: showAdd && addMode === 'existing',
+    queryKey: ['guardians-for-link', searchTrimmed],
+    queryFn: () => guardiansApi.list({ limit: 50, search: searchTrimmed }).then((r) => r.data),
+    enabled: showAdd && addMode === 'existing' && searchTrimmed.length >= 3,
   });
 
   const allGuardians: GuardianOption[] = useMemo(() => {
@@ -65,13 +75,15 @@ export default function StudentDetailPage() {
     return (allGuardiansData?.data ?? []).filter((g: GuardianOption) => !existing.includes(g.id));
   }, [allGuardiansData, guardians]);
 
-  const filteredGuardians = useMemo(() => {
-    if (!guardianSearch.trim()) return allGuardians;
-    const q = guardianSearch.toLowerCase();
-    return allGuardians.filter(
-      (g) => g.name?.toLowerCase().includes(q) || g.phone?.includes(q) || g.email?.toLowerCase().includes(q),
-    );
-  }, [allGuardians, guardianSearch]);
+  function handleNewCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = digits;
+    if (digits.length > 9) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    else if (digits.length > 6) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    else if (digits.length > 3) masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    setNewCpfDisplay(masked);
+    setNewCpfDigits(digits);
+  }
 
   function resetAdd() {
     setShowAdd(false);
@@ -81,15 +93,26 @@ export default function StudentDetailPage() {
     setPhone('');
     setName('');
     setEmail('');
+    setNewCpfDisplay('');
+    setNewCpfDigits('');
     setRelationship('responsavel');
+    setKinshipDegree('');
+    setIsLegalGuardian(false);
+    setIsFinancialGuardian(false);
   }
 
   const linkMut = useMutation({
     mutationFn: () => {
+      const relationshipFields = {
+        relationship,
+        kinshipDegree: kinshipDegree.trim() || undefined,
+        isLegalGuardian,
+        isFinancialGuardian,
+      };
       if (addMode === 'existing' && selectedGuardian) {
-        return studentsApi.linkGuardian(params.id, { guardianId: selectedGuardian.id, relationship });
+        return studentsApi.linkGuardian(params.id, { guardianId: selectedGuardian.id, ...relationshipFields });
       }
-      return studentsApi.linkGuardian(params.id, { phone: phone.trim(), name: name.trim() || undefined, email: email.trim() || undefined, relationship });
+      return studentsApi.linkGuardian(params.id, { phone: phone.trim(), name: name.trim() || undefined, email: email.trim() || undefined, cpf: newCpfDigits || undefined, ...relationshipFields });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['student-guardians', params.id] });
@@ -142,13 +165,19 @@ export default function StudentDetailPage() {
             <p className="text-gray-700">{student.gender === 'M' ? 'Masculino' : student.gender === 'F' ? 'Feminino' : student.gender}</p>
           </div>
         )}
+        {student.cpf && (
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">CPF</p>
+            <p className="text-gray-700">{student.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</p>
+          </div>
+        )}
         {student.notes && (
           <div className="col-span-2">
             <p className="text-xs text-gray-400 mb-0.5">Observações</p>
             <p className="text-gray-700">{student.notes}</p>
           </div>
         )}
-        {!student.birthDate && !student.gender && !student.notes && (
+        {!student.birthDate && !student.gender && !student.cpf && !student.notes && (
           <p className="col-span-2 text-gray-400 italic text-xs">Nenhuma informação adicional cadastrada</p>
         )}
       </div>
@@ -209,9 +238,9 @@ export default function StudentDetailPage() {
                         className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       />
                     </div>
-                    {filteredGuardians.length > 0 && (
+                    {allGuardians.length > 0 && (
                       <div className="mt-1 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 overflow-y-auto divide-y divide-gray-50">
-                        {filteredGuardians.slice(0, 20).map((g) => (
+                        {allGuardians.slice(0, 20).map((g) => (
                           <button
                             key={g.id}
                             onClick={() => { setSelectedGuardian(g); setGuardianSearch(''); }}
@@ -223,7 +252,10 @@ export default function StudentDetailPage() {
                         ))}
                       </div>
                     )}
-                    {guardianSearch && filteredGuardians.length === 0 && (
+                    {searchTrimmed.length > 0 && searchTrimmed.length < 3 && (
+                      <p className="text-xs text-gray-400 mt-1.5 text-center">Digite ao menos 3 caracteres para buscar</p>
+                    )}
+                    {searchTrimmed.length >= 3 && allGuardians.length === 0 && (
                       <p className="text-xs text-gray-400 mt-1.5 text-center">Nenhum responsável encontrado</p>
                     )}
                   </div>
@@ -243,25 +275,50 @@ export default function StudentDetailPage() {
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">E-mail</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com"
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">E-mail</label>
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">CPF</label>
+                    <input value={newCpfDisplay} onChange={handleNewCpfChange} placeholder="000.000.000-00" inputMode="numeric"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                  </div>
                 </div>
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Relação</label>
-              <select value={relationship} onChange={(e) => setRelationship(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                <option value="mae">Mãe</option>
-                <option value="pai">Pai</option>
-                <option value="avo">Avô/Avó</option>
-                <option value="tio">Tio/Tia</option>
-                <option value="responsavel">Responsável</option>
-                <option value="outro">Outro</option>
-              </select>
+            {/* Relationship fields — shared for both modes */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Relação</label>
+                <select value={relationship} onChange={(e) => setRelationship(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                  <option value="mae">Mãe</option>
+                  <option value="pai">Pai</option>
+                  <option value="avo">Avô/Avó</option>
+                  <option value="tio">Tio/Tia</option>
+                  <option value="responsavel">Responsável</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
+                <input value={kinshipDegree} onChange={(e) => setKinshipDegree(e.target.value)} placeholder="Ex: Avó materna"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+              </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={isLegalGuardian} onChange={(e) => setIsLegalGuardian(e.target.checked)} className="rounded" />
+                Responsável legal
+              </label>
+              <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={isFinancialGuardian} onChange={(e) => setIsFinancialGuardian(e.target.checked)} className="rounded" />
+                Responsável financeiro
+              </label>
             </div>
 
             {linkMut.isError && (
@@ -293,7 +350,7 @@ export default function StudentDetailPage() {
                     {sg.guardian.name || <span className="italic text-gray-400">Sem nome</span>}
                   </Link>
                   <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                    {RELATIONSHIP_LABELS[sg.relationship.toLowerCase()] ?? sg.relationship}
+                    {sg.kinshipDegree || RELATIONSHIP_LABELS[sg.relationship.toLowerCase()] || sg.relationship}
                   </span>
                   {sg.guardian.activatedAt ? (
                     <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded flex items-center gap-1">
@@ -301,6 +358,16 @@ export default function StudentDetailPage() {
                     </span>
                   ) : (
                     <span className="text-xs px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded">Pendente</span>
+                  )}
+                  {sg.isLegalGuardian && (
+                    <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded flex items-center gap-1">
+                      <Shield size={10} /> Legal
+                    </span>
+                  )}
+                  {sg.isFinancialGuardian && (
+                    <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded flex items-center gap-1">
+                      <Banknote size={10} /> Financeiro
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">

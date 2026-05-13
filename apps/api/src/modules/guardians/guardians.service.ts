@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database';
 import { sendSms } from '../../utils/sms';
 import { generateOtp, storeOtp } from '../../utils/otp';
+import { sendGuardianWelcomeEmail } from '../../utils/mailer';
 import type { ActivateGuardianDto, UpdateGuardianDto, InviteGuardianDto, StaffUpdateGuardianDto } from './guardians.schemas';
 
 const MAX_GUARDIANS_PER_STUDENT = 5;
@@ -250,23 +251,48 @@ export class GuardiansService {
 
   async create(schoolId: string, dto: { name: string; phone: string; email?: string; cpf?: string }) {
     if (!dto.phone?.trim()) throw { status: 400, code: 'PHONE_REQUIRED', message: 'Telefone é obrigatório' };
+
+    // Valida e-mail
+    const email = dto.email?.trim().toLowerCase() || undefined;
+    if (!email && !dto.phone?.trim()) {
+      throw { status: 400, code: 'EMAIL_OR_PHONE_REQUIRED', message: 'Informe ao menos um e-mail válido ou telefone' };
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw { status: 400, code: 'INVALID_EMAIL', message: 'E-mail inválido' };
+    }
+
     const existingPhone = await prisma.guardian.findFirst({ where: { phone: dto.phone.trim() } });
     if (existingPhone) throw { status: 409, code: 'PHONE_IN_USE', message: 'Já existe um responsável com este telefone' };
+
+    if (email) {
+      const existingEmail = await prisma.guardian.findFirst({ where: { email } });
+      if (existingEmail) throw { status: 409, code: 'EMAIL_IN_USE', message: 'Já existe um responsável com este e-mail' };
+    }
+
     const cpf = dto.cpf?.replace(/\D/g, '') || undefined;
     if (cpf) {
       const existingCpf = await prisma.guardian.findFirst({ where: { cpf } });
       if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF' };
     }
-    return prisma.guardian.create({
+
+    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+
+    const guardian = await prisma.guardian.create({
       data: {
         schoolId,
         name: dto.name?.trim() || '',
         phone: dto.phone.trim(),
-        email: dto.email?.trim().toLowerCase() || undefined,
+        email,
         cpf: cpf || undefined,
         active: true,
       },
     });
+
+    if (email) {
+      await sendGuardianWelcomeEmail(email, guardian.name, school?.name ?? 'Escola');
+    }
+
+    return guardian;
   }
 
   async listAll(schoolId: string, userId: string, role: string, query: { search?: string; status?: string; includeInactive?: boolean } = {}) {

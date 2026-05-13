@@ -17,6 +17,7 @@ const schema = z.object({
   eventDate: z.string().optional(),
   scope: z.enum(['CLASS', 'STUDENT']),
   targetIds: z.array(z.string()).min(1, 'Selecione ao menos um destino'),
+  audienceFilter: z.enum(['ALL', 'LEGAL', 'FINANCIAL']).default('ALL'),
   requiresConfirmation: z.boolean().default(true),
   autoReminder: z.boolean().default(true),
   sendNow: z.boolean().default(false),
@@ -56,6 +57,7 @@ export default function NewCommunicationPage() {
     defaultValues: {
       schoolType: 'NOTICE',
       scope: 'CLASS',
+      audienceFilter: 'ALL' as 'ALL' | 'LEGAL' | 'FINANCIAL',
       requiresConfirmation: true,
       autoReminder: true,
       sendNow: false,
@@ -201,6 +203,18 @@ export default function NewCommunicationPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Público-alvo</label>
+            <select
+              {...register('audienceFilter')}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="ALL">Todos os responsáveis</option>
+              <option value="LEGAL">Somente responsáveis legais</option>
+              <option value="FINANCIAL">Somente responsáveis financeiros</option>
+            </select>
           </div>
 
           {scope === 'CLASS' && (

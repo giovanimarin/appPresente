@@ -109,6 +109,40 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
   await sendEmail(to, subject, text, html);
 }
 
+export async function sendGuardianWelcomeEmail(
+  to: string,
+  guardianName: string,
+  schoolName: string,
+): Promise<void> {
+  const subject = `Cadastro no Presente — ${schoolName}`;
+
+  const text = [
+    `Olá${guardianName ? `, ${guardianName}` : ''}!`,
+    '',
+    `Você foi cadastrado(a) como responsável no Presente pela escola ${schoolName}.`,
+    '',
+    'Em breve você receberá o convite com instruções de acesso.',
+    '',
+    'Caso não reconheça este cadastro, entre em contato com a escola.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="color:#1f2937">Bem-vindo ao Presente!</h2>
+      <p style="color:#555">Olá${guardianName ? `, <strong>${guardianName}</strong>` : ''}!</p>
+      <p style="color:#555">Você foi cadastrado(a) como responsável no Presente pela escola <strong>${schoolName}</strong>.</p>
+      <p style="color:#555">Em breve você receberá o convite com instruções de acesso.</p>
+      <p style="color:#9ca3af;font-size:13px">Caso não reconheça este cadastro, entre em contato com a escola.</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail(to, subject, text, html);
+  } catch (e) {
+    console.error('[mailer] Falha ao enviar e-mail de boas-vindas ao responsável:', e);
+  }
+}
+
 export async function sendCommunicationEmail(
   to: string,
   guardianName: string,

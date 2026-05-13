@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { guardiansApi } from '@/lib/api';
 import ActionMenu from '@/components/ActionMenu';
 import { cn, formatPhone, maskPhone, formatCpf, maskCpf } from '@/lib/utils';
+import { getUser } from '@/lib/auth';
 import { Loader2, RefreshCw, Search, Plus, X, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -19,6 +20,7 @@ type Guardian = {
 
 export default function GuardiansPage() {
   const qc = useQueryClient();
+  const isTeacher = getUser()?.role === 'TEACHER';
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showInactive, setShowInactive] = useState(false);
@@ -86,14 +88,16 @@ export default function GuardiansPage() {
           <h1 className="text-xl font-bold text-gray-900">Responsáveis</h1>
           <p className="text-sm text-gray-500 mt-0.5">{filtered.length} responsável{filtered.length !== 1 ? 'is' : ''}</p>
         </div>
-        <button onClick={() => setShowNew(!showNew)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
-          <Plus size={16} /> Novo responsável
-        </button>
+        {!isTeacher && (
+          <button onClick={() => setShowNew(!showNew)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700">
+            <Plus size={16} /> Novo responsável
+          </button>
+        )}
       </div>
 
       {/* Formulário de criação */}
-      {showNew && (
+      {showNew && !isTeacher && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Novo responsável</h2>
@@ -150,7 +154,7 @@ export default function GuardiansPage() {
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none px-3 py-2 border border-gray-200 rounded-lg bg-white">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
-          Ver arquivados
+          Ver desativados
         </label>
       </div>
 
@@ -161,7 +165,7 @@ export default function GuardiansPage() {
           <div className="text-center py-12 text-gray-400">Nenhum responsável encontrado</div>
         ) : filtered.map((g) => (
           <div key={g.id} className="px-5 py-4">
-            {editId === g.id ? (
+            {editId === g.id && !isTeacher ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-4 gap-3">
                   <div>
@@ -206,7 +210,7 @@ export default function GuardiansPage() {
                     <p className={cn('font-medium text-sm truncate', g.active ? 'text-gray-900' : 'text-gray-400')}>
                       {g.name || <span className="italic text-gray-400">Sem nome</span>}
                     </p>
-                    {!g.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Arquivado</span>}
+                    {!g.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Desativado</span>}
                     {g.active && !g.activatedAt && <span className="text-xs px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded">Pendente</span>}
                   </div>
                   <p className="text-xs text-gray-500">
@@ -236,15 +240,17 @@ export default function GuardiansPage() {
                     className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-primary-50" title="Ver detalhes">
                     <ChevronRight size={16} />
                   </Link>
-                  <ActionMenu
-                    isActive={g.active}
-                    onEdit={() => openEdit(g)}
-                    onArchive={() => archiveMut.mutate(g.id)}
-                    onReactivate={() => reactivateMut.mutate(g.id)}
-                    onDelete={() => deleteMut.mutate(g.id)}
-                    archivePending={archiveMut.isPending}
-                    deletePending={deleteMut.isPending}
-                  />
+                  {!isTeacher && (
+                    <ActionMenu
+                      isActive={g.active}
+                      onEdit={() => openEdit(g)}
+                      onArchive={() => archiveMut.mutate(g.id)}
+                      onReactivate={() => reactivateMut.mutate(g.id)}
+                      onDelete={() => deleteMut.mutate(g.id)}
+                      archivePending={archiveMut.isPending}
+                      deletePending={deleteMut.isPending}
+                    />
+                  )}
                 </div>
               </div>
             )}

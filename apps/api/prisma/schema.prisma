@@ -108,6 +108,7 @@ model School {
   units               SchoolUnit[]
   users               User[]
   classes             Class[]
+  rooms               Room[]
   students            Student[]
   guardians           Guardian[]
   communications      Communication[]
@@ -151,6 +152,7 @@ model User {
   email        String    @db.VarChar(200)
   passwordHash String    @map("password_hash")
   role         UserRole
+  cpf          String?   @db.VarChar(11)
   phone        String?   @db.VarChar(20)
   avatarUrl    String?   @map("avatar_url")
   active       Boolean   @default(true)
@@ -212,6 +214,25 @@ model CoordinatorTeacher {
   @@map("coordinator_teachers")
 }
 
+// ── 3b. Rooms ─────────────────────────────────────────────────────────────
+
+model Room {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  capacity  Int?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes Class[]
+
+  @@unique([name, schoolId])
+  @@index([schoolId], name: "idx_rooms_school")
+  @@map("rooms")
+}
+
 // ── 4. Classes ────────────────────────────────────────────────────────────
 
 model Class {
@@ -219,6 +240,7 @@ model Class {
   schoolId      String  @map("school_id") @db.Uuid
   unitId        String? @map("unit_id") @db.Uuid
   coordinatorId String? @map("coordinator_id") @db.Uuid
+  roomId        String? @map("room_id") @db.Uuid
   name          String  @db.VarChar(100)
   grade         String? @db.VarChar(50)
   shift         String? @db.VarChar(20)
@@ -231,6 +253,7 @@ model Class {
   school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   unit        SchoolUnit? @relation(fields: [unitId], references: [id])
   coordinator User?       @relation(fields: [coordinatorId], references: [id])
+  roomRel     Room?       @relation(fields: [roomId], references: [id])
 
   students         Student[]
   classTeachers    ClassTeacher[]
@@ -268,6 +291,7 @@ model Student {
   schoolId       String  @map("school_id") @db.Uuid
   classId        String? @map("class_id") @db.Uuid
   name           String  @db.VarChar(200)
+  cpf            String? @db.VarChar(11)
   enrollmentCode String? @map("enrollment_code") @db.VarChar(50)
   birthDate      DateTime? @map("birth_date") @db.Date
   gender         String? @db.VarChar(20)
@@ -348,17 +372,20 @@ model GuardianSchoolPreference {
 // ── 8. Student-Guardian Link ──────────────────────────────────────────────
 
 model StudentGuardian {
-  studentId    String     @map("student_id") @db.Uuid
-  guardianId   String     @map("guardian_id") @db.Uuid
-  schoolId     String     @map("school_id") @db.Uuid
-  relationship String     @db.VarChar(50)
-  isPrimary    Boolean    @default(false) @map("is_primary")
-  status       LinkStatus @default(PENDING_INVITE)
-  invitedBy    String?    @map("invited_by") @db.Uuid
-  invitedAt    DateTime?  @map("invited_at")
-  activatedAt  DateTime?  @map("activated_at")
-  approvedBy   String?    @map("approved_by") @db.Uuid
-  approvedAt   DateTime?  @map("approved_at")
+  studentId         String     @map("student_id") @db.Uuid
+  guardianId        String     @map("guardian_id") @db.Uuid
+  schoolId          String     @map("school_id") @db.Uuid
+  relationship      String     @db.VarChar(50)
+  kinshipDegree     String?    @map("kinship_degree") @db.VarChar(100)
+  isPrimary         Boolean    @default(false) @map("is_primary")
+  isLegalGuardian   Boolean    @default(false) @map("is_legal_guardian")
+  isFinancialGuardian Boolean  @default(false) @map("is_financial_guardian")
+  status            LinkStatus @default(PENDING_INVITE)
+  invitedBy         String?    @map("invited_by") @db.Uuid
+  invitedAt         DateTime?  @map("invited_at")
+  activatedAt       DateTime?  @map("activated_at")
+  approvedBy        String?    @map("approved_by") @db.Uuid
+  approvedAt        DateTime?  @map("approved_at")
 
   student    Student   @relation(fields: [studentId], references: [id])
   guardian   Guardian  @relation("GuardianRelation", fields: [guardianId], references: [id])
@@ -395,6 +422,9 @@ model Communication {
   // Status
   schoolStatus   SchoolCommStatus?   @map("school_status")
   guardianStatus GuardianCommStatus? @map("guardian_status")
+
+  // Filtro de audiência (responsáveis legais, financeiros ou todos)
+  audienceFilter String @default("ALL") @map("audience_filter") @db.VarChar(20) // ALL | LEGAL | FINANCIAL
 
   // Confirmação
   requiresConfirmation Boolean @default(true) @map("requires_confirmation")

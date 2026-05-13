@@ -81,3 +81,32 @@ jobs:
           generate_release_notes: true
 
       # Frontend: Vercel detecta push no branch main e faz deploy automático
+
+  build-mobile:
+    name: Build Mobile — Produção
+    runs-on: ubuntu-latest
+    needs: deploy   # só builda se o deploy da API passou
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instala dependências do mobile
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Build EAS Android (production)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli build --profile production --platform android --non-interactive
+
+      - name: Submit para Play Store
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli submit --profile production --platform android --non-interactive --latest

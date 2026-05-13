@@ -6,17 +6,23 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { classesApi, usersApi } from '@/lib/api';
+import { classesApi, usersApi, roomsApi } from '@/lib/api';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SearchableSelect from '@/components/SearchableSelect';
 
+const SHIFTS = [
+  { value: 'MATUTINO', label: 'Matutino' },
+  { value: 'VESPERTINO', label: 'Vespertino' },
+  { value: 'NOTURNO', label: 'Noturno' },
+];
+
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
   grade: z.string().optional(),
-  shift: z.enum(['manha', 'tarde', 'integral', 'noturno', '']).optional(),
+  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'manha', 'tarde', 'integral', 'noturno', '']).optional(),
   year: z.coerce.number().int().min(2020).max(2100).optional().or(z.literal(0)),
-  room: z.string().optional(),
+  roomId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   coordinatorId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
 });
 type FormData = z.infer<typeof schema>;
@@ -35,21 +41,43 @@ export default function EditClassPage() {
     queryKey: ['users', false],
     queryFn: () => usersApi.list({ limit: 200 }).then((r) => r.data),
   });
-  const coordinators = usersData?.data?.filter((u: { role: string }) => ['ADMIN', 'COORDINATOR'].includes(u.role)) ?? [];
+  const coordinators = usersData?.data?.filter((u: { role: string }) => u.role === 'COORDINATOR') ?? [];
+
+  const { data: roomsData } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => roomsApi.list().then((r) => r.data),
+  });
+  const rooms: { id: string; name: string }[] = Array.isArray(roomsData) ? roomsData : (roomsData?.data ?? []);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
   const coordinatorId = watch('coordinatorId');
+  const roomId = watch('roomId');
 
   useEffect(() => {
-    if (cls) reset({ name: cls.name, grade: cls.grade ?? '', shift: cls.shift ?? '', year: cls.year ?? 0, room: cls.room ?? '', coordinatorId: cls.coordinator?.id ?? '' });
+    if (cls) {
+      reset({
+        name: cls.name,
+        grade: cls.grade ?? '',
+        shift: cls.shift ?? '',
+        year: cls.year ?? 0,
+        roomId: cls.roomId ?? '',
+        coordinatorId: cls.coordinator?.id ?? '',
+      });
+    }
   }, [cls, reset]);
 
   async function onSubmit(data: FormData) {
     setError('');
     try {
-      await classesApi.update(params.id, { ...data, shift: data.shift || undefined, year: data.year || undefined, room: data.room || undefined, grade: data.grade || undefined });
+      await classesApi.update(params.id, {
+        ...data,
+        shift: data.shift || undefined,
+        year: data.year || undefined,
+        grade: data.grade || undefined,
+        roomId: data.roomId || undefined,
+      });
       await qc.invalidateQueries({ queryKey: ['classes'] });
       router.push('/dashboard/classes');
     } catch (err: unknown) {
@@ -84,10 +112,7 @@ export default function EditClassPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Turno</label>
               <select {...register('shift')} className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
                 <option value="">Não informado</option>
-                <option value="manha">Manhã</option>
-                <option value="tarde">Tarde</option>
-                <option value="integral">Integral</option>
-                <option value="noturno">Noturno</option>
+                {SHIFTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
           </div>
@@ -98,7 +123,12 @@ export default function EditClassPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sala</label>
-              <input {...register('room')} placeholder="Ex: A1" className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+              <SearchableSelect
+                options={rooms.map((r) => ({ id: r.id, label: r.name }))}
+                value={roomId ?? ''}
+                onChange={(v) => setValue('roomId', v || undefined, { shouldDirty: true })}
+                emptyLabel="Nenhuma"
+              />
             </div>
           </div>
           <div>

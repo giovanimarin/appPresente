@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
-import { X } from 'lucide-react-native';
+import { X, LogOut } from 'lucide-react-native';
+import { clearTokens } from '@/lib/storage';
 
 const SIDEBAR_WIDTH = 270;
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0;
@@ -51,6 +52,12 @@ export default function AppSidebar({ isOpen, onClose, items, userName, userRole 
     router.navigate(href as never);
   }
 
+  async function handleLogout() {
+    onClose();
+    await clearTokens();
+    router.replace('/login-selector' as never);
+  }
+
   function isActive(href: string) {
     const segment = href.split('/').filter(Boolean).pop() ?? '';
     return pathname.endsWith('/' + segment) || pathname === href;
@@ -84,6 +91,7 @@ export default function AppSidebar({ isOpen, onClose, items, userName, userRole 
             shadowOpacity: 0.12,
             shadowRadius: 12,
             elevation: 16,
+            flexDirection: 'column',
           },
           { transform: [{ translateX }] },
         ]}
@@ -153,6 +161,32 @@ export default function AppSidebar({ isOpen, onClose, items, userName, userRole 
             })}
           </View>
         </ScrollView>
+
+        {/* Rodapé: botão sair */}
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: '#f3f4f6',
+            paddingHorizontal: 12,
+            paddingVertical: 12,
+            paddingBottom: STATUS_BAR_HEIGHT + 12,
+          }}
+        >
+          <TouchableOpacity
+            onPress={handleLogout}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 13,
+              borderRadius: 10,
+            }}
+          >
+            <LogOut size={20} color="#ef4444" />
+            <Text style={{ fontSize: 15, fontWeight: '400', color: '#ef4444' }}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </>
   );

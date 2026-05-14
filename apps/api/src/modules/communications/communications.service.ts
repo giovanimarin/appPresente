@@ -288,7 +288,7 @@ export class CommunicationsService {
       deviceType?: string | null;
     }> = [];
 
-    const addStudentGuardians = (student: { id: string; name: string; studentGuardians: { guardianId: string; guardian: { id: string; name: string; phone: string } }[] }) => {
+    const addStudentGuardians = (student: { id: string; name: string; studentGuardians: { guardianId: string; guardian: { id: string; name: string; phone: string | null } }[] }) => {
       for (const sg of student.studentGuardians) {
         const key = `${sg.guardianId}:${student.id}`;
         if (seen.has(key)) continue;
@@ -296,8 +296,8 @@ export class CommunicationsService {
         const rec = readMap.get(sg.guardianId);
         allRecipients.push({
           guardianId: sg.guardianId,
-          guardianName: sg.guardian.name || sg.guardian.phone,
-          guardianPhone: sg.guardian.phone,
+          guardianName: sg.guardian.name || sg.guardian.phone || '',
+          guardianPhone: sg.guardian.phone ?? '',
           studentId: student.id,
           studentName: student.name,
           sentAt: comm.sentAt,

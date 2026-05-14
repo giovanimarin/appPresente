@@ -151,6 +151,7 @@ export class GuardiansService {
     const guardian = await prisma.guardian.findFirst({ where: { id: guardianId, schoolId } });
     if (!guardian) throw { status: 404, code: 'GUARDIAN_NOT_FOUND', message: 'Responsável não encontrado' };
 
+    if (!guardian.phone) throw { status: 400, code: 'PHONE_REQUIRED', message: 'Responsável sem telefone cadastrado' };
     const code = generateOtp();
     await storeOtp(guardian.phone, code);
     await sendSms(guardian.phone, `Seu acesso ao Presente. Código: ${code}`);
@@ -267,7 +268,7 @@ export class GuardiansService {
       data: {
         schoolId,
         name: dto.name?.trim() || '',
-        phone: dto.phone?.trim() || null,
+        phone: dto.phone?.trim() || undefined,
         email,
         cpf,
         active: true,

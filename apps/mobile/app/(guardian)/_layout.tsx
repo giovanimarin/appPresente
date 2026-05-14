@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Platform, StatusBar } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { MessageSquare, Calendar, User, Home, FileText, Clock, Menu } from 'lucide-react-native';
-import * as Notifications from 'expo-notifications';
 import AppSidebar from '@/components/AppSidebar';
 import { SidebarProvider, useSidebar } from '@/components/SidebarContext';
-import { registerPushToken } from '@/lib/notifications';
+import {
+  registerPushToken,
+  addNotificationReceivedListener,
+  addNotificationResponseReceivedListener,
+} from '@/lib/notifications';
 
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 const HEADER_HEIGHT = STATUS_TOP + 52;
@@ -22,20 +25,17 @@ const GUARDIAN_ITEMS = [
 function GuardianTabs() {
   const { open, openSidebar, closeSidebar } = useSidebar();
   const router = useRouter();
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const notifListener = useRef<{ remove: () => void } | null>(null);
+  const responseListener = useRef<{ remove: () => void } | null>(null);
 
   useEffect(() => {
-    // Registra push token assim que o responsável está logado
     registerPushToken();
 
-    // Notificação recebida com app aberto: só mostra (handler global cuida disso)
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+    notifListener.current = addNotificationReceivedListener((notification) => {
       console.log('[Push] Recebida:', notification.request.content.title);
     });
 
-    // Usuário tocou na notificação: navega para o comunicado
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+    responseListener.current = addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, string>;
       if (data?.type === 'COMMUNICATION' && data?.communicationId) {
         router.push(`/communications/${data.communicationId}` as never);
@@ -43,7 +43,7 @@ function GuardianTabs() {
     });
 
     return () => {
-      notificationListener.current?.remove();
+      notifListener.current?.remove();
       responseListener.current?.remove();
     };
   }, []);

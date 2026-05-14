@@ -31,10 +31,12 @@ export const authApi = {
     api.post('/auth/staff/reset-password', { token, password }),
   completeFirstAccess: (token: string, password: string) =>
     api.post('/auth/staff/first-access', { token, password }),
-  guardianLogin: (phone: string, otp: string) =>
-    api.post('/auth/guardian/verify-otp', { phone, otp }),
-  requestOtp: (phone: string) =>
-    api.post('/auth/guardian/request-otp', { phone }),
+  guardianLogin: (email: string, password: string) =>
+    api.post('/auth/guardian/login', { email, password }),
+  requestOtp: (email: string) =>
+    api.post('/auth/guardian/request-otp', { email }),
+  verifyOtp: (email: string, code: string) =>
+    api.post('/auth/guardian/verify-otp', { email, code }),
 };
 
 // Communications

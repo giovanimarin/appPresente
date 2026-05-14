@@ -8,15 +8,15 @@ import { classesApi } from '@/lib/api';
 import ActionMenu from '@/components/ActionMenu';
 import { cn } from '@/lib/utils';
 import { getUser } from '@/lib/auth';
-import { Plus, Loader2, Users, Upload, Search } from 'lucide-react';
+import { Plus, Loader2, Users, Upload, Search, DoorOpen } from 'lucide-react';
 
 const SHIFT_LABELS: Record<string, string> = {
-  MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno',
+  MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
   // legado (migração dos valores antigos)
   manha: 'Manhã', tarde: 'Tarde', integral: 'Integral', noturno: 'Noturno',
 };
 
-type Class = { id: string; name: string; grade?: string; shift?: string; year?: number; active: boolean; _count?: { students: number } };
+type Class = { id: string; name: string; grade?: string; shift?: string; year?: number; active: boolean; _count?: { students: number }; roomRel?: { id: string; name: string } | null };
 
 export default function ClassesPage() {
   const router = useRouter();
@@ -74,6 +74,7 @@ export default function ClassesPage() {
           <option value="MATUTINO">Matutino</option>
           <option value="VESPERTINO">Vespertino</option>
           <option value="NOTURNO">Noturno</option>
+          <option value="INTEGRAL">Integral</option>
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none px-3 py-2 border border-gray-200 rounded-lg bg-white">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
@@ -116,9 +117,17 @@ export default function ClassesPage() {
                 {cls.shift && <span>{SHIFT_LABELS[cls.shift] ?? cls.shift}</span>}
                 {cls.year && <span>{cls.year}</span>}
               </div>
-              {cls._count !== undefined && (
-                <p className="text-xs text-gray-400 mt-2">{cls._count.students} aluno{cls._count.students !== 1 ? 's' : ''}</p>
-              )}
+              <div className="flex items-center justify-between mt-2">
+                {cls._count !== undefined && (
+                  <p className="text-xs text-gray-400">{cls._count.students} aluno{cls._count.students !== 1 ? 's' : ''}</p>
+                )}
+                {cls.roomRel && (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                    <DoorOpen size={12} className="text-gray-400" />
+                    {cls.roomRel.name}
+                  </span>
+                )}
+              </div>
             </a>
           </div>
         ))}

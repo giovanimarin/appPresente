@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import DateInput from '@/components/DateInput';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -36,7 +37,7 @@ export default function NewStudentPage() {
   });
   const classes = classesData?.data ?? [];
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, control, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { gender: '', classId: preselectedClassId },
   });
@@ -112,8 +113,10 @@ export default function NewStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento</label>
-              <input {...register('birthDate')} type="date"
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+              <Controller name="birthDate" control={control} render={({ field }) => (
+                <DateInput value={field.value ?? ''} onChange={field.onChange}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+              )} />
             </div>
           </div>
           <div>

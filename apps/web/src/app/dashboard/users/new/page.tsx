@@ -18,7 +18,7 @@ const schema = z.object({
     required_error: 'Selecione um perfil',
   }),
   phone: z.string().optional(),
-  cpf: z.string().optional(),
+  cpf: z.string().min(11, 'CPF obrigatório'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -52,7 +52,7 @@ export default function NewUserPage() {
     else if (digits.length > 6) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
     else if (digits.length > 3) masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
     setCpfDisplay(masked);
-    setValue('cpf', digits || undefined);
+    setValue('cpf', digits, { shouldValidate: true });
   }
 
   async function onSubmit(data: FormData) {
@@ -145,14 +145,18 @@ export default function NewUserPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CPF (opcional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
             <input
               value={cpfDisplay}
               onChange={handleCpfChange}
               placeholder="000.000.000-00"
               inputMode="numeric"
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              className={cn(
+                'w-full px-3 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none',
+                errors.cpf ? 'border-red-300' : 'border-gray-300',
+              )}
             />
+            {errors.cpf && <p className="mt-1 text-xs text-red-600">{errors.cpf.message}</p>}
           </div>
         </div>
 

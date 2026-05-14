@@ -7,6 +7,7 @@ import { communicationsApi, formsApi, guardiansApi, uploadsApi } from '@/lib/api
 import { isAuthenticated } from '@/lib/auth';
 import { formatDateTime, cn } from '@/lib/utils';
 import { FileText, Plus, Loader2, CheckCircle2, Clock, AlertCircle, X, ChevronDown, ChevronUp, Paperclip, Upload } from 'lucide-react';
+import DateInput from '@/components/DateInput';
 import axios from 'axios';
 
 type MyRequest = {
@@ -98,7 +99,7 @@ function FormFieldInput({ field, value, onChange, onFileChange, fileValue }: {
         </select>
       );
     case 'DATE':
-      return <input type="date" value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)} className={base} />;
+      return <DateInput value={(value as string) ?? ''} onChange={onChange} className={base} />;
     case 'CHECKBOX':
       return (
         <label className="flex items-center gap-2 text-sm cursor-pointer">

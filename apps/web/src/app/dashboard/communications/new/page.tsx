@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import DateInput from '@/components/DateInput';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -52,7 +53,7 @@ export default function NewCommunicationPage() {
     queryFn: () => studentsApi.list({ limit: 500 }).then((r) => r.data?.data ?? r.data),
   });
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       schoolType: 'NOTICE',
@@ -145,11 +146,10 @@ export default function NewCommunicationPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {schoolType === 'EXAM' ? 'Data da prova' : 'Data da reunião'}
               </label>
-              <input
-                {...register('eventDate')}
-                type="date"
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+              <Controller name="eventDate" control={control} render={({ field }) => (
+                <DateInput value={field.value ?? ''} onChange={field.onChange}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+              )} />
             </div>
           )}
 

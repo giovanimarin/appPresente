@@ -34,6 +34,11 @@ export class UsersService {
       throw { status: 409, code: 'EMAIL_IN_USE', message: 'E-mail já cadastrado nesta escola' };
     }
 
+    const cpf = dto.cpf?.replace(/\D/g, '');
+    if (!cpf) throw { status: 400, code: 'CPF_REQUIRED', message: 'CPF é obrigatório' };
+    const existingCpf = await prisma.user.findFirst({ where: { cpf } });
+    if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um usuário com este CPF' };
+
     const passwordHash = dto.password
       ? await bcrypt.hash(dto.password, 12)
       : await bcrypt.hash(randomUUID(), 12);
@@ -46,7 +51,7 @@ export class UsersService {
         passwordHash,
         role: dto.role as 'SECRETARY' | 'COORDINATOR' | 'TEACHER',
         phone: dto.phone,
-        cpf: dto.cpf,
+        cpf: cpf,
         unitId: dto.unitId,
         active: true,
       },

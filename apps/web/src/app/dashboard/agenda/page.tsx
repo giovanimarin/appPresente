@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { agendaApi } from '@/lib/api';
 import { formatDateTime, cn } from '@/lib/utils';
 import { Loader2, MapPin, Users, List, CalendarDays, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import DateInput from '@/components/DateInput';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   EXAM: 'Prova', PARENT_MEETING: 'Reunião', FIELD_TRIP: 'Passeio',
@@ -117,9 +118,9 @@ export default function AgendaPage() {
               <option value="">Todos os tipos</option>
               {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-            <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }}
+            <DateInput value={from} onChange={(v) => { setFrom(v); setPage(1); }}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-            <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }}
+            <DateInput value={to} onChange={(v) => { setTo(v); setPage(1); }}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             {(typeFilter || from || to) && (
               <button onClick={() => { setTypeFilter(''); setFrom(''); setTo(''); setPage(1); }}

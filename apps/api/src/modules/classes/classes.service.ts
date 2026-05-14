@@ -41,18 +41,27 @@ export class ClassesService {
   }
 
   private async _checkRoomConflict(schoolId: string, roomId: string, shift: string, excludeClassId?: string) {
+    const SHIFT_LABELS: Record<string, string> = {
+      MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
+    };
+    // Integral ocupa a sala o dia todo — conflita com qualquer outro turno
+    const conflictingShifts = shift === 'INTEGRAL'
+      ? ['INTEGRAL', 'MATUTINO', 'VESPERTINO', 'NOTURNO']
+      : [shift, 'INTEGRAL'];
+
     const conflict = await prisma.class.findFirst({
       where: {
         schoolId,
         roomId,
-        shift,
+        shift: { in: conflictingShifts },
         active: true,
         ...(excludeClassId ? { id: { not: excludeClassId } } : {}),
       },
-      select: { id: true, name: true },
+      select: { id: true, name: true, shift: true },
     });
     if (conflict) {
-      throw { status: 409, code: 'ROOM_SHIFT_CONFLICT', message: `Esta sala já está ocupada por outra turma no mesmo turno (${conflict.name})` };
+      const label = SHIFT_LABELS[conflict.shift ?? ''] ?? conflict.shift;
+      throw { status: 409, code: 'ROOM_SHIFT_CONFLICT', message: `Esta sala já está ocupada no turno ${label} pela turma "${conflict.name}"` };
     }
   }
 

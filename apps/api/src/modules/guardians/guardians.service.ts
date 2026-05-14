@@ -249,30 +249,16 @@ export class GuardiansService {
 
   // ── Staff: CRUD de responsáveis ───────────────────────────────────────────
 
-  async create(schoolId: string, dto: { name: string; phone: string; email?: string; cpf?: string }) {
-    if (!dto.phone?.trim()) throw { status: 400, code: 'PHONE_REQUIRED', message: 'Telefone é obrigatório' };
+  async create(schoolId: string, dto: { name: string; phone?: string; email?: string; cpf?: string }) {
+    const cpf = dto.cpf?.replace(/\D/g, '') || undefined;
+    if (!cpf) throw { status: 400, code: 'CPF_REQUIRED', message: 'CPF é obrigatório' };
 
-    // Valida e-mail
+    const existingCpf = await prisma.guardian.findFirst({ where: { cpf } });
+    if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF' };
+
     const email = dto.email?.trim().toLowerCase() || undefined;
-    if (!email && !dto.phone?.trim()) {
-      throw { status: 400, code: 'EMAIL_OR_PHONE_REQUIRED', message: 'Informe ao menos um e-mail válido ou telefone' };
-    }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw { status: 400, code: 'INVALID_EMAIL', message: 'E-mail inválido' };
-    }
-
-    const existingPhone = await prisma.guardian.findFirst({ where: { phone: dto.phone.trim() } });
-    if (existingPhone) throw { status: 409, code: 'PHONE_IN_USE', message: 'Já existe um responsável com este telefone' };
-
-    if (email) {
-      const existingEmail = await prisma.guardian.findFirst({ where: { email } });
-      if (existingEmail) throw { status: 409, code: 'EMAIL_IN_USE', message: 'Já existe um responsável com este e-mail' };
-    }
-
-    const cpf = dto.cpf?.replace(/\D/g, '') || undefined;
-    if (cpf) {
-      const existingCpf = await prisma.guardian.findFirst({ where: { cpf } });
-      if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF' };
     }
 
     const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
@@ -281,9 +267,9 @@ export class GuardiansService {
       data: {
         schoolId,
         name: dto.name?.trim() || '',
-        phone: dto.phone.trim(),
+        phone: dto.phone?.trim() || null,
         email,
-        cpf: cpf || undefined,
+        cpf,
         active: true,
       },
     });
@@ -352,10 +338,6 @@ export class GuardiansService {
   async staffUpdate(schoolId: string, guardianId: string, dto: StaffUpdateGuardianDto) {
     const guardian = await prisma.guardian.findFirst({ where: { id: guardianId, schoolId } });
     if (!guardian) throw { status: 404, code: 'GUARDIAN_NOT_FOUND', message: 'Responsável não encontrado' };
-    if (dto.phone) {
-      const conflict = await prisma.guardian.findFirst({ where: { phone: dto.phone.trim(), NOT: { id: guardianId } } });
-      if (conflict) throw { status: 409, code: 'PHONE_IN_USE', message: 'Já existe um responsável com este telefone' };
-    }
     const cpf = dto.cpf !== undefined ? (dto.cpf ? dto.cpf.replace(/\D/g, '') || null : null) : undefined;
     if (cpf) {
       const conflict = await prisma.guardian.findFirst({ where: { cpf, NOT: { id: guardianId } } });

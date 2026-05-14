@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { classesApi, usersApi, studentsApi } from '@/lib/api';
-import { ArrowLeft, Loader2, UserCircle, Pencil, Plus, X, Search } from 'lucide-react';
+import { ArrowLeft, Loader2, UserCircle, Pencil, Plus, X, Search, DoorOpen } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from '@/components/SearchableSelect';
 
@@ -96,7 +96,15 @@ export default function ClassDetailPage() {
         <button onClick={() => router.back()} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"><ArrowLeft size={18} /></button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">{cls?.name}</h1>
-          <p className="text-sm text-gray-500">{[cls?.grade, cls?.shift, cls?.year].filter(Boolean).join(' · ')}</p>
+          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-0.5">
+            <p className="text-sm text-gray-500">{[cls?.grade, cls?.shift, cls?.year].filter(Boolean).join(' · ')}</p>
+            {cls?.roomRel && (
+              <span className="inline-flex items-center gap-1 text-sm text-gray-500">
+                <DoorOpen size={14} className="text-gray-400" />
+                {cls.roomRel.name}
+              </span>
+            )}
+          </div>
         </div>
         <Link href={`/dashboard/classes/${params.id}/edit`} className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
           <Pencil size={14} /> Editar turma

@@ -39,10 +39,10 @@ const navGroups: NavGroup[] = [
     roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'],
     items: [
       { href: '/dashboard/users',     icon: Users,        label: 'Equipe',       roles: ['ADMIN'] },
+      { href: '/dashboard/rooms',     icon: DoorOpen,     label: 'Salas',        roles: ['ADMIN', 'SECRETARY'] },
       { href: '/dashboard/classes',   icon: GraduationCap, label: 'Turmas',      roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
       { href: '/dashboard/students',  icon: BookUser,     label: 'Alunos',       roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
       { href: '/dashboard/guardians', icon: Users,        label: 'Responsáveis', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-      { href: '/dashboard/rooms',     icon: DoorOpen,     label: 'Salas',        roles: ['ADMIN', 'SECRETARY'] },
       { href: '/dashboard/settings',  icon: School,       label: 'Configurações',roles: ['ADMIN'] },
     ],
   },

@@ -6,7 +6,7 @@ export const createUserSchema = z.object({
   password: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/).optional(),
   role: z.enum(['SECRETARY', 'COORDINATOR', 'TEACHER']),
   phone: z.string().max(20).optional(),
-  cpf: z.preprocess((v) => (v === '' ? undefined : v), z.string().length(11).optional()),
+  cpf: z.preprocess((v) => (v === '' ? undefined : v), z.string().length(11, 'CPF deve conter 11 dígitos')),
   unitId: z.string().uuid().optional(),
 });
 

@@ -15,12 +15,13 @@ const SHIFTS = [
   { value: 'MATUTINO', label: 'Matutino' },
   { value: 'VESPERTINO', label: 'Vespertino' },
   { value: 'NOTURNO', label: 'Noturno' },
+  { value: 'INTEGRAL', label: 'Integral' },
 ];
 
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
   grade: z.string().optional(),
-  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', '']).optional(),
+  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL', '']).optional(),
   year: z.coerce.number().int().min(2020).max(2100).optional().or(z.literal(0)),
   roomId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   coordinatorId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),

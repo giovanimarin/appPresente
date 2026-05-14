@@ -8,7 +8,7 @@ export default function LoginSelector() {
         <Text className="text-white text-3xl font-bold">P</Text>
       </View>
       <Text className="text-2xl font-bold text-gray-900 mb-1">Presente</Text>
-      <Text className="text-gray-500 text-sm mb-12">Gestão escolar simplificada</Text>
+      <Text className="text-gray-500 text-sm mb-12">Conectando escola e família</Text>
 
       <View className="w-full gap-3">
         <TouchableOpacity

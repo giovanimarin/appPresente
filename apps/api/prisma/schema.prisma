@@ -152,7 +152,7 @@ model User {
   email        String    @db.VarChar(200)
   passwordHash String    @map("password_hash")
   role         UserRole
-  cpf          String?   @db.VarChar(11)
+  cpf          String?   @unique @db.VarChar(11)
   phone        String?   @db.VarChar(20)
   avatarUrl    String?   @map("avatar_url")
   active       Boolean   @default(true)
@@ -324,7 +324,7 @@ model Guardian {
   schoolId    String    @map("school_id") @db.Uuid
   name        String    @db.VarChar(200)
   cpf         String?   @unique @db.VarChar(11) @map("cpf")
-  phone       String    @unique @db.VarChar(20)
+  phone       String?   @db.VarChar(20)
   email       String?   @db.VarChar(200)
   pushToken   String?   @map("push_token")
   deviceType  String?   @map("device_type") @db.VarChar(10)

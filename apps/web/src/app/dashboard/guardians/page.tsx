@@ -111,12 +111,12 @@ export default function GuardiansPage() {
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">CPF</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">CPF *</label>
               <input value={newCpf} onChange={(e) => setNewCpf(maskCpf(e.target.value))} placeholder="000.000.000-00"
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Telefone *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Telefone</label>
               <input value={newPhone} onChange={(e) => setNewPhone(maskPhone(e.target.value))} placeholder="(11) 99999-9999"
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
@@ -132,7 +132,7 @@ export default function GuardiansPage() {
           <div className="flex justify-end gap-2">
             <button onClick={() => { setShowNew(false); setNewName(''); setNewPhone(''); setNewEmail(''); }}
               className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
-            <button onClick={() => createMut.mutate()} disabled={!newPhone.trim() || createMut.isPending}
+            <button onClick={() => createMut.mutate()} disabled={newCpf.replace(/\D/g, '').length < 11 || createMut.isPending}
               className="px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-60">
               {createMut.isPending ? 'Criando...' : 'Criar responsável'}
             </button>
@@ -174,7 +174,7 @@ export default function GuardiansPage() {
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">CPF</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">CPF *</label>
                     <input value={editCpf} onChange={(e) => setEditCpf(maskCpf(e.target.value))} placeholder="000.000.000-00"
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
                   </div>

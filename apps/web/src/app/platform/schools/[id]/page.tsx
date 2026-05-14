@@ -9,6 +9,7 @@ import {
   ArrowLeft, Users, MessageSquare, Calendar, FileText,
   AlertTriangle, CheckCircle2, TrendingUp, Edit3, Save, X, KeyRound, User,
 } from 'lucide-react';
+import DateInput from '@/components/DateInput';
 
 const PLAN_OPTIONS = ['STARTER', 'SCHOOL', 'NETWORK', 'ENTERPRISE'];
 
@@ -207,10 +208,9 @@ export default function SchoolHealthPage() {
             </div>
             <div>
               <label className="block text-gray-400 text-xs mb-1">Fim do trial</label>
-              <input
-                type="date"
+              <DateInput
                 value={form.trialEndsAt ?? ''}
-                onChange={(e) => setForm({ ...form, trialEndsAt: e.target.value })}
+                onChange={(v) => setForm({ ...form, trialEndsAt: v })}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-indigo-500"
               />
             </div>

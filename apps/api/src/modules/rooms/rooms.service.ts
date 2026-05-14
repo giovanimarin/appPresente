@@ -5,6 +5,19 @@ export class RoomsService {
   async listRooms(schoolId: string, includeInactive = false) {
     return prisma.room.findMany({
       where: { schoolId, ...(includeInactive ? {} : { active: true }) },
+      include: {
+        classes: {
+          where: { active: true },
+          select: {
+            id: true,
+            name: true,
+            grade: true,
+            shift: true,
+            _count: { select: { students: true } },
+          },
+          orderBy: { shift: 'asc' },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }

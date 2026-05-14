@@ -8,6 +8,7 @@ import {
   CalendarCheck, Plus, X, Clock, Users, BookUser, Loader2,
   Trash2, Ban, User, Repeat, ChevronDown,
 } from 'lucide-react';
+import DateInput from '@/components/DateInput';
 
 type Slot = {
   id: string;
@@ -417,17 +418,17 @@ export default function AppointmentsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1.5">A partir de</label>
-                        <input
-                          type="date" value={recurrenceFrom}
-                          onChange={(e) => setRecurrenceFrom(e.target.value)}
+                        <DateInput
+                          value={recurrenceFrom}
+                          onChange={(v) => setRecurrenceFrom(v)}
                           className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1.5">Até</label>
-                        <input
-                          type="date" value={recurrenceUntil}
-                          onChange={(e) => setRecurrenceUntil(e.target.value)}
+                        <DateInput
+                          value={recurrenceUntil}
+                          onChange={(v) => setRecurrenceUntil(v)}
                           className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
@@ -513,8 +514,8 @@ export default function AppointmentsPage() {
           <option value="BOOKED">Reservado</option>
           <option value="CANCELLED">Cancelado</option>
         </select>
-        <input
-          type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)}
+        <DateInput
+          value={filterFrom} onChange={(v) => setFilterFrom(v)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         {(filterStatus || filterFrom) && (

@@ -1,8 +1,10 @@
 import { Worker, Job } from 'bullmq';
+import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { env } from '../../config/env';
 import { prisma } from '../../config/database';
 
 const connection = { url: env.REDIS_URL };
+const expo = new Expo();
 
 interface CommPushJobData {
   communicationId: string;
@@ -46,32 +48,58 @@ async function getGuardianTokensForStudents(studentIds: string[], schoolId: stri
   return sgs.map((sg) => sg.guardian.pushToken).filter((t): t is string => t !== null);
 }
 
-async function sendFcmNotifications(tokens: string[], title: string, body: string, data: Record<string, string>) {
+async function sendPushNotifications(
+  tokens: string[],
+  title: string,
+  body: string,
+  data: Record<string, string>,
+) {
   if (tokens.length === 0) return;
-  // Production: use firebase-admin messaging.sendEachForMulticast({ tokens, notification: {title, body}, data })
-  console.log(`[FCM] Sending to ${tokens.length} tokens:`, { title: title.substring(0, 50), data });
+
+  const validTokens = tokens.filter((t) => Expo.isExpoPushToken(t));
+  if (validTokens.length === 0) {
+    console.warn('[PushWorker] No valid Expo push tokens found');
+    return;
+  }
+
+  const messages: ExpoPushMessage[] = validTokens.map((to) => ({
+    to,
+    sound: 'default',
+    title,
+    body,
+    data,
+  }));
+
+  const chunks = expo.chunkPushNotifications(messages);
+  for (const chunk of chunks) {
+    try {
+      const receipts = await expo.sendPushNotificationsAsync(chunk);
+      for (const receipt of receipts) {
+        if (receipt.status === 'error') {
+          console.error('[PushWorker] Receipt error:', receipt.message, receipt.details);
+        }
+      }
+    } catch (err) {
+      console.error('[PushWorker] Chunk send error:', err);
+    }
+  }
+
+  console.log(`[PushWorker] Sent to ${validTokens.length} devices`);
 }
 
 export const pushWorker = new Worker<PushJobData>(
   'push-notifications',
   async (job: Job<PushJobData>) => {
-    // Distinguish job type by data shape
     if ('eventId' in job.data) {
-      // Event push
       const { eventId, schoolId, classIds, type } = job.data;
       const tokens = await getGuardianTokensForClasses(classIds, schoolId);
       if (tokens.length === 0) return;
 
-      const title = type === 'EVENT_CANCELLED'
-        ? 'Evento cancelado'
-        : 'Novo evento na agenda';
-
-      await sendFcmNotifications(tokens, title, '', { type: 'AGENDA_EVENT', eventId });
-      console.log(`[PushWorker] Event ${eventId} notified ${tokens.length} guardians`);
+      const title = type === 'EVENT_CANCELLED' ? 'Evento cancelado' : 'Novo evento na agenda';
+      await sendPushNotifications(tokens, title, '', { type: 'AGENDA_EVENT', eventId });
       return;
     }
 
-    // Communication push
     const { communicationId, schoolId, scope, targetIds, type } = job.data;
 
     const comm = await prisma.communication.findFirst({
@@ -84,12 +112,9 @@ export const pushWorker = new Worker<PushJobData>(
       return;
     }
 
-    let tokens: string[];
-    if (scope === 'CLASS') {
-      tokens = await getGuardianTokensForClasses(targetIds, schoolId);
-    } else {
-      tokens = await getGuardianTokensForStudents(targetIds, schoolId);
-    }
+    const tokens = scope === 'CLASS'
+      ? await getGuardianTokensForClasses(targetIds, schoolId)
+      : await getGuardianTokensForStudents(targetIds, schoolId);
 
     if (tokens.length === 0) return;
 
@@ -99,12 +124,10 @@ export const pushWorker = new Worker<PushJobData>(
     };
     const title = `${typeLabel[type] ?? type}: ${comm.title}`;
 
-    await sendFcmNotifications(tokens, title, comm.body.substring(0, 100), {
+    await sendPushNotifications(tokens, title, comm.body.substring(0, 100), {
       type: 'COMMUNICATION',
       communicationId,
     });
-
-    console.log(`[PushWorker] Comm ${communicationId} notified ${tokens.length} guardians`);
   },
   { connection, concurrency: 5 },
 );

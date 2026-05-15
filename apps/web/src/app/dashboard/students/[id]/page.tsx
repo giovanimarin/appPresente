@@ -93,7 +93,6 @@ export default function StudentDetailPage() {
     setEmail('');
     setNewCpfDisplay('');
     setNewCpfDigits('');
-    setRelationship('responsavel');
     setKinshipDegree('');
     setIsLegalGuardian(false);
     setIsFinancialGuardian(false);

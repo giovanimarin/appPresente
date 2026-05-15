@@ -74,7 +74,7 @@ export class GuardiansService {
       where: { id: guardianId },
       include: {
         studentGuardians: {
-          where: { status: 'ACTIVE' },
+          where: { status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
           include: {
             student: { include: { class: { select: { id: true, name: true, grade: true } } } },
           },

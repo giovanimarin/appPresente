@@ -174,7 +174,7 @@ export class AuthService {
         orderBy: { activatedAt: 'desc' },
         include: {
           studentGuardians: {
-            where: { status: 'ACTIVE' },
+            where: { status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
             include: { student: { select: { id: true, name: true, classId: true } } },
           },
         },
@@ -183,7 +183,7 @@ export class AuthService {
         where: { email: dto.email },
         include: {
           studentGuardians: {
-            where: { status: 'ACTIVE' },
+            where: { status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
             include: { student: { select: { id: true, name: true, classId: true } } },
           },
         },

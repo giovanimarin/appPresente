@@ -14,6 +14,7 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
 
 type StudentLink = {
   relationship: string;
+  kinshipDegree?: string | null;
   status: string;
   student: { id: string; name: string; class: { id: string; name: string; grade: string } };
 };
@@ -34,7 +35,7 @@ export default function GuardianDetailPage() {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<StudentOption | null>(null);
-  const [relationship, setRelationship] = useState('responsavel');
+  const [kinshipDegree, setKinshipDegree] = useState('');
 
   const { data: guardian, isLoading } = useQuery({
     queryKey: ['guardian', params.id],
@@ -89,7 +90,7 @@ export default function GuardianDetailPage() {
   });
 
   const linkStudentMut = useMutation({
-    mutationFn: () => studentsApi.linkGuardian(selectedStudent!.id, { guardianId: params.id, relationship }),
+    mutationFn: () => studentsApi.linkGuardian(selectedStudent!.id, { guardianId: params.id, relationship: 'responsavel', kinshipDegree: kinshipDegree || undefined }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['guardian', params.id] });
       qc.invalidateQueries({ queryKey: ['students-for-link'] });
@@ -252,15 +253,15 @@ export default function GuardianDetailPage() {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Relação</label>
-              <select value={relationship} onChange={(e) => setRelationship(e.target.value)}
+              <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
+              <select value={kinshipDegree} onChange={(e) => setKinshipDegree(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                <option value="mae">Mãe</option>
-                <option value="pai">Pai</option>
-                <option value="avo">Avô/Avó</option>
-                <option value="tio">Tio/Tia</option>
-                <option value="responsavel">Responsável</option>
-                <option value="outro">Outro</option>
+                <option value="">Não informado</option>
+                <option value="Pai">Pai</option>
+                <option value="Mãe">Mãe</option>
+                <option value="Avô/Avó">Avô/Avó</option>
+                <option value="Tio/Tia">Tio/Tia</option>
+                <option value="Outro">Outro</option>
               </select>
             </div>
 
@@ -290,9 +291,11 @@ export default function GuardianDetailPage() {
                   <a href={`/dashboard/students/${sg.student.id}`} className="text-sm font-medium text-gray-900 hover:text-primary-600 hover:underline">
                     {sg.student.name}
                   </a>
-                  <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                    {RELATIONSHIP_LABELS[sg.relationship.toLowerCase()] ?? sg.relationship}
-                  </span>
+                  {(sg.kinshipDegree || sg.relationship) && (
+                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                      {sg.kinshipDegree || RELATIONSHIP_LABELS[sg.relationship?.toLowerCase()] || sg.relationship}
+                    </span>
+                  )}
                   <span className={cn('text-xs px-1.5 py-0.5 rounded', sg.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700')}>
                     {sg.status === 'ACTIVE' ? 'Ativo' : 'Pendente'}
                   </span>

@@ -47,8 +47,6 @@ export default function StudentDetailPage() {
   const [newCpfDisplay, setNewCpfDisplay] = useState('');
   const [newCpfDigits, setNewCpfDigits] = useState('');
 
-  // Shared relationship fields
-  const [relationship, setRelationship] = useState('responsavel');
   const [kinshipDegree, setKinshipDegree] = useState('');
   const [isLegalGuardian, setIsLegalGuardian] = useState(false);
   const [isFinancialGuardian, setIsFinancialGuardian] = useState(false);
@@ -104,8 +102,8 @@ export default function StudentDetailPage() {
   const linkMut = useMutation({
     mutationFn: () => {
       const relationshipFields = {
-        relationship,
-        kinshipDegree: kinshipDegree.trim() || undefined,
+        relationship: 'responsavel',
+        kinshipDegree: kinshipDegree || undefined,
         isLegalGuardian,
         isFinancialGuardian,
       };
@@ -291,24 +289,17 @@ export default function StudentDetailPage() {
             )}
 
             {/* Relationship fields — shared for both modes */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Relação</label>
-                <select value={relationship} onChange={(e) => setRelationship(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                  <option value="mae">Mãe</option>
-                  <option value="pai">Pai</option>
-                  <option value="avo">Avô/Avó</option>
-                  <option value="tio">Tio/Tia</option>
-                  <option value="responsavel">Responsável</option>
-                  <option value="outro">Outro</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
-                <input value={kinshipDegree} onChange={(e) => setKinshipDegree(e.target.value)} placeholder="Ex: Avó materna"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
+              <select value={kinshipDegree} onChange={(e) => setKinshipDegree(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <option value="">Não informado</option>
+                <option value="Pai">Pai</option>
+                <option value="Mãe">Mãe</option>
+                <option value="Avô/Avó">Avô/Avó</option>
+                <option value="Tio/Tia">Tio/Tia</option>
+                <option value="Outro">Outro</option>
+              </select>
             </div>
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">

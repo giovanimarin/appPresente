@@ -57,6 +57,18 @@ export async function getClassStudents(req: AuthRequest, res: Response, next: Ne
   catch (e) { handle(e, res, next); }
 }
 
+export async function addClassRoom(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try { res.status(201).json(await svc.addClassRoom(req.user!.schoolId, req.params.id, req.body)); }
+  catch (e) { handle(e, res, next); }
+}
+
+export async function removeClassRoom(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { roomId, shift } = req.body as { roomId: string; shift: string };
+    res.json(await svc.removeClassRoom(req.user!.schoolId, req.params.id, roomId, shift));
+  } catch (e) { handle(e, res, next); }
+}
+
 // ── Alunos ────────────────────────────────────────────────────────────────
 
 export async function listStudents(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

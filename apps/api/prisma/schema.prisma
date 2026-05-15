@@ -226,7 +226,7 @@ model Room {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classes Class[]
+  classRooms ClassRoom[]
 
   @@unique([name, schoolId])
   @@index([schoolId], name: "idx_rooms_school")
@@ -240,12 +240,9 @@ model Class {
   schoolId      String  @map("school_id") @db.Uuid
   unitId        String? @map("unit_id") @db.Uuid
   coordinatorId String? @map("coordinator_id") @db.Uuid
-  roomId        String? @map("room_id") @db.Uuid
   name          String  @db.VarChar(100)
   grade         String? @db.VarChar(50)
-  shift         String? @db.VarChar(20)
   year          Int?
-  room          String? @db.VarChar(20)
   active        Boolean @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -253,8 +250,8 @@ model Class {
   school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   unit        SchoolUnit? @relation(fields: [unitId], references: [id])
   coordinator User?       @relation(fields: [coordinatorId], references: [id])
-  roomRel     Room?       @relation(fields: [roomId], references: [id])
 
+  classRooms       ClassRoom[]
   students         Student[]
   classTeachers    ClassTeacher[]
   commClasses      CommunicationClass[]
@@ -264,6 +261,21 @@ model Class {
   @@index([schoolId, active], name: "idx_classes_school")
   @@index([coordinatorId], name: "idx_classes_coordinator")
   @@map("classes")
+}
+
+model ClassRoom {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  classId String @map("class_id") @db.Uuid
+  roomId  String @map("room_id") @db.Uuid
+  shift   String @db.VarChar(20)
+  label   String? @db.VarChar(100)
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  room  Room  @relation(fields: [roomId], references: [id])
+
+  @@unique([classId, roomId, shift])
+  @@index([classId], name: "idx_class_rooms_class")
+  @@map("class_rooms")
 }
 
 // ── 5. Class-Teacher Link ─────────────────────────────────────────────────

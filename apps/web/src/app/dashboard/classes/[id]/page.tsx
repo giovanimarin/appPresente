@@ -3,13 +3,19 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
-import { classesApi, usersApi, studentsApi } from '@/lib/api';
-import { ArrowLeft, Loader2, UserCircle, Pencil, Plus, X, Search, DoorOpen } from 'lucide-react';
+import { classesApi, usersApi, studentsApi, roomsApi } from '@/lib/api';
+import { ArrowLeft, Loader2, UserCircle, Pencil, Plus, X, Search, DoorOpen, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from '@/components/SearchableSelect';
 
 type Student = { id: string; name: string; enrollmentCode?: string; studentGuardians: { guardian: { name: string; phone: string; activatedAt?: string } }[] };
 type Teacher = { teacher: { id: string; name: string }; subject?: string; isHomeroom: boolean };
+type ClassRoom = { id: string; shift: string; label?: string; room: { id: string; name: string } };
+
+const SHIFT_LABELS: Record<string, string> = {
+  MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
+};
+const SHIFTS = ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'] as const;
 
 export default function ClassDetailPage() {
   const params = useParams<{ id: string }>();
@@ -21,6 +27,12 @@ export default function ClassDetailPage() {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [subject, setSubject] = useState('');
   const [isHomeroom, setIsHomeroom] = useState(false);
+
+  // room panel state
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [selectedShift, setSelectedShift] = useState<string>('MATUTINO');
+  const [roomLabel, setRoomLabel] = useState('');
 
   // student panel state
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -39,12 +51,23 @@ export default function ClassDetailPage() {
     queryKey: ['users', false],
     queryFn: () => usersApi.list({ limit: 200 }).then((r) => r.data),
   });
+  const { data: roomsData } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => roomsApi.list({ limit: 200 }).then((r) => r.data),
+    enabled: showAddRoom,
+  });
+
   // all students not already in this class
   const { data: allStudentsData } = useQuery({
     queryKey: ['students', false],
     queryFn: () => studentsApi.list({ limit: 500 }).then((r) => r.data),
     enabled: showAddStudent,
   });
+
+  const currentRoomShiftKeys = new Set((cls?.classRooms ?? []).map((cr: ClassRoom) => `${cr.room.id}:${cr.shift}`));
+  const availableRooms = (roomsData?.data ?? []).filter((r: { id: string }) =>
+    !currentRoomShiftKeys.has(`${r.id}:${selectedShift}`)
+  );
 
   const availableTeachers = (usersData?.data ?? []).filter(
     (u: { id: string; role: string }) =>
@@ -59,6 +82,21 @@ export default function ClassDetailPage() {
         (!studentSearch || s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.enrollmentCode?.includes(studentSearch)),
     );
   }, [allStudentsData, studentSearch, currentStudentIds]);
+
+  const addRoomMut = useMutation({
+    mutationFn: () => classesApi.addRoom(params.id, { roomId: selectedRoomId, shift: selectedShift, label: roomLabel || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['class', params.id] });
+      setShowAddRoom(false);
+      setSelectedRoomId('');
+      setRoomLabel('');
+    },
+  });
+
+  const removeRoomMut = useMutation({
+    mutationFn: ({ roomId, shift }: { roomId: string; shift: string }) => classesApi.removeRoom(params.id, { roomId, shift }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['class', params.id] }),
+  });
 
   const addTeacherMut = useMutation({
     mutationFn: () => classesApi.addTeacher(params.id, { teacherId: selectedTeacherId, subject: subject || undefined, isHomeroom }),
@@ -97,18 +135,89 @@ export default function ClassDetailPage() {
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">{cls?.name}</h1>
           <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-0.5">
-            <p className="text-sm text-gray-500">{[cls?.grade, cls?.shift, cls?.year].filter(Boolean).join(' · ')}</p>
-            {cls?.roomRel && (
-              <span className="inline-flex items-center gap-1 text-sm text-gray-500">
+            <p className="text-sm text-gray-500">{[cls?.grade, cls?.year].filter(Boolean).join(' · ')}</p>
+            {(cls?.classRooms ?? []).map((cr: ClassRoom) => (
+              <span key={cr.id} className="inline-flex items-center gap-1 text-sm text-gray-500">
                 <DoorOpen size={14} className="text-gray-400" />
-                {cls.roomRel.name}
+                {cr.room.name} · {SHIFT_LABELS[cr.shift] ?? cr.shift}
+                {cr.label && <span className="text-gray-400">({cr.label})</span>}
               </span>
-            )}
+            ))}
           </div>
         </div>
+        <Link href={`/dashboard/communications?classId=${params.id}&label=${encodeURIComponent(cls?.name ?? '')}`}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
+          <MessageSquare size={14} /> Comunicados
+        </Link>
         <Link href={`/dashboard/classes/${params.id}/edit`} className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
           <Pencil size={14} /> Editar turma
         </Link>
+      </div>
+
+      {/* Salas e Turnos */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-sm text-gray-900">Salas e Turnos</h2>
+          <button onClick={() => { setShowAddRoom(!showAddRoom); setShowAddTeacher(false); setShowAddStudent(false); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-200">
+            <Plus size={14} /> Adicionar
+          </button>
+        </div>
+
+        {showAddRoom && (
+          <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Sala *</label>
+                <SearchableSelect
+                  options={(availableRooms ?? []).map((r: { id: string; name: string }) => ({ id: r.id, label: r.name }))}
+                  value={selectedRoomId}
+                  onChange={setSelectedRoomId}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Turno *</label>
+                <select value={selectedShift} onChange={(e) => setSelectedShift(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                  {SHIFTS.map((s) => <option key={s} value={s}>{SHIFT_LABELS[s]}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Rótulo (opcional)</label>
+              <input value={roomLabel} onChange={(e) => setRoomLabel(e.target.value)} placeholder="Ex: Grupo A"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowAddRoom(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+              <button onClick={() => addRoomMut.mutate()} disabled={!selectedRoomId || addRoomMut.isPending}
+                className="px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-60">
+                {addRoomMut.isPending ? 'Adicionando...' : 'Adicionar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="divide-y divide-gray-50">
+          {(cls?.classRooms ?? []).length === 0 && !showAddRoom && (
+            <div className="text-center py-8 text-gray-400 text-sm">Nenhuma sala vinculada</div>
+          )}
+          {(cls?.classRooms ?? []).map((cr: ClassRoom) => (
+            <div key={cr.id} className="px-5 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-700">
+                <DoorOpen size={15} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">{cr.room.name}</p>
+                <p className="text-xs text-gray-400">{SHIFT_LABELS[cr.shift] ?? cr.shift}{cr.label ? ` · ${cr.label}` : ''}</p>
+              </div>
+              <button onClick={() => removeRoomMut.mutate({ roomId: cr.room.id, shift: cr.shift })} disabled={removeRoomMut.isPending}
+                className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover">
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Professores */}

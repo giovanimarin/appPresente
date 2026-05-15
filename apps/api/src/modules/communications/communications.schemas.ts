@@ -41,6 +41,8 @@ export const communicationListQuerySchema = z.object({
   status: z.enum(['DRAFT', 'SCHEDULED', 'SENT', 'CANCELLED']).optional(),
   eventDateFrom: z.string().optional(),
   eventDateTo: z.string().optional(),
+  classId: z.string().uuid().optional(),
+  studentId: z.string().uuid().optional(),
 });
 
 export type CreateCommunicationDto = z.infer<typeof createCommunicationSchema>;

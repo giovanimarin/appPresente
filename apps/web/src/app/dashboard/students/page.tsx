@@ -7,7 +7,7 @@ import { studentsApi, classesApi } from '@/lib/api';
 import ActionMenu from '@/components/ActionMenu';
 import { cn } from '@/lib/utils';
 import { getUser } from '@/lib/auth';
-import { Plus, Loader2, Search, Upload, UserCheck, UserX } from 'lucide-react';
+import { Plus, Loader2, Search, Upload, UserCheck, UserX, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import ClassCombobox from '@/components/ClassCombobox';
 
@@ -125,6 +125,13 @@ export default function StudentsPage() {
                 <UserX size={12} /> Sem resp.
               </span>
             )}
+            <Link
+              href={`/dashboard/communications?studentId=${student.id}&label=${encodeURIComponent(student.name)}`}
+              className="p-1.5 text-gray-300 hover:text-primary-500 rounded-lg hover:bg-primary-50 transition-colors flex-shrink-0"
+              title="Ver comunicados deste aluno"
+            >
+              <MessageSquare size={15} />
+            </Link>
             {!isTeacher && (
               <ActionMenu
                 isActive={student.active}

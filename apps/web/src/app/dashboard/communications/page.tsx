@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { communicationsApi } from '@/lib/api';
 import { formatDateTime, commTypeLabel, commTypeColor, cn } from '@/lib/utils';
 import { getUser } from '@/lib/auth';
-import { Plus, Send, X, Loader2, Download, Inbox } from 'lucide-react';
+import { Plus, Send, X, Loader2, Download, Inbox, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 async function exportReadReport(commId: string, commTitle: string) {
@@ -51,15 +52,20 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function CommunicationsPage() {
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
+  const classId = searchParams.get('classId') ?? undefined;
+  const studentId = searchParams.get('studentId') ?? undefined;
+  const contextLabel = searchParams.get('label') ?? undefined;
+
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [userRole, setUserRole] = useState<string | null>(null);
   useEffect(() => { setUserRole(getUser()?.role ?? null); }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['communications', { page, status: statusFilter }],
+    queryKey: ['communications', { page, status: statusFilter, classId, studentId }],
     queryFn: () =>
-      communicationsApi.list({ page, limit: 20, status: statusFilter || undefined }).then((r) => r.data),
+      communicationsApi.list({ page, limit: 20, status: statusFilter || undefined, classId, studentId }).then((r) => r.data),
   });
 
   const sendMutation = useMutation({
@@ -75,11 +81,19 @@ export default function CommunicationsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Comunicados</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {data?.total ?? 0} comunicado{(data?.total ?? 0) !== 1 ? 's' : ''}
-          </p>
+        <div className="flex items-center gap-3">
+          {(classId || studentId) && (
+            <Link href="/dashboard/communications" className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+              <ArrowLeft size={18} />
+            </Link>
+          )}
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Comunicados</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {contextLabel && <span className="font-medium text-primary-600">{contextLabel} · </span>}
+              {data?.total ?? 0} comunicado{(data?.total ?? 0) !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {userRole !== 'TEACHER' && (

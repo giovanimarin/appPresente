@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { agendaApi } from '@/lib/api';
+import { agendaApi, classesApi } from '@/lib/api';
 import { formatDateTime, cn } from '@/lib/utils';
-import { Loader2, MapPin, Users, List, CalendarDays, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Loader2, Users, List, CalendarDays, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import DateInput from '@/components/DateInput';
+import Link from 'next/link';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   EXAM: 'Prova', PARENT_MEETING: 'Reunião', FIELD_TRIP: 'Passeio',
@@ -37,6 +38,7 @@ export default function AgendaPage() {
 
   // list filters
   const [typeFilter, setTypeFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
@@ -46,10 +48,18 @@ export default function AgendaPage() {
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [calTypeFilter, setCalTypeFilter] = useState('');
+  const [calClassFilter, setCalClassFilter] = useState('');
+
+  const { data: classesData } = useQuery({
+    queryKey: ['classes', false],
+    queryFn: () => classesApi.list({ limit: 200 }).then((r) => r.data),
+  });
+  const classes: { id: string; name: string }[] = classesData?.data ?? [];
 
   const { data, isLoading } = useQuery({
-    queryKey: ['agenda', { page, typeFilter, from, to }],
-    queryFn: () => agendaApi.list({ page, limit: 20, eventType: typeFilter || undefined, from: from || undefined, to: to || undefined }).then((r) => r.data),
+    queryKey: ['agenda', { page, typeFilter, classFilter, from, to }],
+    queryFn: () => agendaApi.list({ page, limit: 20, eventType: typeFilter || undefined, classId: classFilter || undefined, from: from || undefined, to: to || undefined }).then((r) => r.data),
     enabled: view === 'list',
   });
 
@@ -57,8 +67,8 @@ export default function AgendaPage() {
   const calLastDay = new Date(calYear, calMonth + 1, 0).getDate();
   const calTo = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(calLastDay).padStart(2, '0')}T23:59:59.999Z`;
   const { data: calData, isLoading: calLoading } = useQuery({
-    queryKey: ['agenda-cal', calYear, calMonth],
-    queryFn: () => agendaApi.list({ limit: 200, from: calFrom, to: calTo }).then((r) => r.data),
+    queryKey: ['agenda-cal', calYear, calMonth, calTypeFilter, calClassFilter],
+    queryFn: () => agendaApi.list({ limit: 200, from: calFrom, to: calTo, eventType: calTypeFilter || undefined, classId: calClassFilter || undefined }).then((r) => r.data),
     enabled: view === 'calendar',
   });
 
@@ -118,12 +128,17 @@ export default function AgendaPage() {
               <option value="">Todos os tipos</option>
               {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
+            <select value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setPage(1); }}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+              <option value="">Todas as turmas</option>
+              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
             <DateInput value={from} onChange={(v) => { setFrom(v); setPage(1); }}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             <DateInput value={to} onChange={(v) => { setTo(v); setPage(1); }}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-            {(typeFilter || from || to) && (
-              <button onClick={() => { setTypeFilter(''); setFrom(''); setTo(''); setPage(1); }}
+            {(typeFilter || classFilter || from || to) && (
+              <button onClick={() => { setTypeFilter(''); setClassFilter(''); setFrom(''); setTo(''); setPage(1); }}
                 className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg bg-white">
                 Limpar
               </button>
@@ -135,32 +150,39 @@ export default function AgendaPage() {
               <div className="flex items-center justify-center h-40"><Loader2 size={24} className="animate-spin text-primary-600" /></div>
             ) : data?.data?.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm">Nenhum evento encontrado</div>
-            ) : data?.data?.map((event: AgendaEvent) => (
-              <div key={event.id} className={cn('px-5 py-4 flex items-center gap-4', event.cancelledAt && 'opacity-50')}>
-                <div className="text-center min-w-[48px]">
-                  <p className="text-lg font-bold text-primary-700 leading-none">{new Date(event.startsAt).getUTCDate()}</p>
-                  <p className="text-xs text-gray-500 uppercase">{new Date(event.startsAt).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' })}</p>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', EVENT_TYPE_COLORS[event.eventType])}>{EVENT_TYPE_LABELS[event.eventType]}</span>
-                    {event.cancelledAt && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Cancelado</span>}
+            ) : data?.data?.map((event: AgendaEvent) => {
+              const inner = (
+                <>
+                  <div className="text-center min-w-[48px]">
+                    <p className="text-lg font-bold text-primary-700 leading-none">{new Date(event.startsAt).getUTCDate()}</p>
+                    <p className="text-xs text-gray-500 uppercase">{new Date(event.startsAt).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' })}</p>
                   </div>
-                  <p className="font-medium text-gray-900 truncate">{event.title}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                    <span>{formatDateTime(event.startsAt)}</span>
-                    {event.description && <span>{event.description}</span>}
-                    {event.eventClasses?.length > 0 && <span className="flex items-center gap-1"><Users size={10} />{event.eventClasses.map((ec) => ec.class.name).join(', ')}</span>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', EVENT_TYPE_COLORS[event.eventType])}>{EVENT_TYPE_LABELS[event.eventType]}</span>
+                      {event.cancelledAt && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Cancelado</span>}
+                    </div>
+                    <p className="font-medium text-gray-900 truncate">{event.title}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                      <span>{formatDateTime(event.startsAt)}</span>
+                      {event.description && <span>{event.description}</span>}
+                      {event.eventClasses?.length > 0 && <span className="flex items-center gap-1"><Users size={10} />{event.eventClasses.map((ec) => ec.class.name).join(', ')}</span>}
+                    </div>
                   </div>
+                  {event.communicationId && <ExternalLink size={14} className="text-indigo-400 flex-shrink-0" />}
+                </>
+              );
+              return event.communicationId ? (
+                <Link key={event.id} href={`/dashboard/communications/${event.communicationId}`}
+                  className={cn('px-5 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors', event.cancelledAt && 'opacity-50')}>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={event.id} className={cn('px-5 py-4 flex items-center gap-4', event.cancelledAt && 'opacity-50')}>
+                  {inner}
                 </div>
-                {event.communicationId && (
-                  <a href={`/dashboard/communications/${event.communicationId}`}
-                    className="p-1.5 text-indigo-400 hover:text-indigo-700 rounded-lg hover:bg-indigo-50 flex-shrink-0" title="Ver comunicado">
-                    <ExternalLink size={14} />
-                  </a>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {totalPages > 1 && (
@@ -176,6 +198,25 @@ export default function AgendaPage() {
       {/* ── CALENDAR VIEW ─────────────────────────────────────────────────── */}
       {view === 'calendar' && (
         <div className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <select value={calTypeFilter} onChange={(e) => { setCalTypeFilter(e.target.value); setSelectedDay(null); }}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+              <option value="">Todos os tipos</option>
+              {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <select value={calClassFilter} onChange={(e) => { setCalClassFilter(e.target.value); setSelectedDay(null); }}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+              <option value="">Todas as turmas</option>
+              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {(calTypeFilter || calClassFilter) && (
+              <button onClick={() => { setCalTypeFilter(''); setCalClassFilter(''); setSelectedDay(null); }}
+                className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg bg-white">
+                Limpar
+              </button>
+            )}
+          </div>
+
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
               <button onClick={prevMonth} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"><ChevronLeft size={18} /></button>
@@ -241,25 +282,35 @@ export default function AgendaPage() {
                 <div className="text-center py-8 text-gray-400 text-sm">Nenhum evento neste dia</div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {selectedEvents.map((event) => (
-                    <div key={event.id} className={cn('px-5 py-4 flex items-center gap-4', event.cancelledAt && 'opacity-50')}>
-                      <div className={cn('w-2 h-2 rounded-full flex-shrink-0', EVENT_TYPE_DOT[event.eventType])} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900">{event.title}</p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                          <span>{formatDateTime(event.startsAt)}</span>
-                          {event.description && <span>{event.description}</span>}
-                          {event.eventClasses?.length > 0 && <span className="flex items-center gap-1"><Users size={10} />{event.eventClasses.map((ec) => ec.class.name).join(', ')}</span>}
+                  {selectedEvents.map((event) => {
+                    const inner = (
+                      <>
+                        <div className={cn('w-2 h-2 rounded-full flex-shrink-0', EVENT_TYPE_DOT[event.eventType])} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm text-gray-900">{event.title}</p>
+                            <span className={cn('text-xs px-1.5 py-0.5 rounded-full font-medium', EVENT_TYPE_COLORS[event.eventType])}>{EVENT_TYPE_LABELS[event.eventType]}</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                            <span>{formatDateTime(event.startsAt)}</span>
+                            {event.description && <span>{event.description}</span>}
+                            {event.eventClasses?.length > 0 && <span className="flex items-center gap-1"><Users size={10} />{event.eventClasses.map((ec) => ec.class.name).join(', ')}</span>}
+                          </div>
                         </div>
+                        {event.communicationId && <ExternalLink size={14} className="text-indigo-400 flex-shrink-0" />}
+                      </>
+                    );
+                    return event.communicationId ? (
+                      <Link key={event.id} href={`/dashboard/communications/${event.communicationId}`}
+                        className={cn('px-5 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors', event.cancelledAt && 'opacity-50')}>
+                        {inner}
+                      </Link>
+                    ) : (
+                      <div key={event.id} className={cn('px-5 py-4 flex items-center gap-4', event.cancelledAt && 'opacity-50')}>
+                        {inner}
                       </div>
-                      {event.communicationId && (
-                        <a href={`/dashboard/communications/${event.communicationId}`}
-                          className="p-1.5 text-indigo-400 hover:text-indigo-700 rounded-lg hover:bg-indigo-50 flex-shrink-0" title="Ver comunicado">
-                          <ExternalLink size={14} />
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

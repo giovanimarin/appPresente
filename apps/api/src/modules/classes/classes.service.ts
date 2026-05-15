@@ -1,10 +1,10 @@
 import { prisma } from '../../config/database';
-import type { CreateClassDto, UpdateClassDto, CreateStudentDto, UpdateStudentDto } from './classes.schemas';
+import type { CreateClassDto, UpdateClassDto, ClassRoomDto, CreateStudentDto, UpdateStudentDto } from './classes.schemas';
 
 const CLASS_SELECT = {
-  id: true, name: true, grade: true, shift: true, year: true, room: true, roomId: true, active: true,
+  id: true, name: true, grade: true, year: true, active: true,
   coordinator: { select: { id: true, name: true } },
-  roomRel: { select: { id: true, name: true } },
+  classRooms: { select: { id: true, shift: true, label: true, room: { select: { id: true, name: true } } } },
   classTeachers: { select: { teacher: { select: { id: true, name: true } }, subject: true, isHomeroom: true } },
   _count: { select: { students: { where: { active: true } } } },
 } as const;
@@ -25,7 +25,7 @@ export class ClassesService {
     if (role === 'COORDINATOR') where.coordinatorId = userId;
     if (query.search) where.name = { contains: query.search, mode: 'insensitive' };
     if (query.grade) where.grade = query.grade;
-    if (query.shift) where.shift = query.shift;
+    if (query.shift) where.classRooms = { some: { shift: query.shift } };
 
     const [data, total] = await Promise.all([
       prisma.class.findMany({ where, select: CLASS_SELECT as never, orderBy: { name: 'asc' } }),
@@ -44,66 +44,72 @@ export class ClassesService {
     const SHIFT_LABELS: Record<string, string> = {
       MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
     };
-    // Integral ocupa a sala o dia todo — conflita com qualquer outro turno
     const conflictingShifts = shift === 'INTEGRAL'
       ? ['INTEGRAL', 'MATUTINO', 'VESPERTINO', 'NOTURNO']
       : [shift, 'INTEGRAL'];
 
-    const conflict = await prisma.class.findFirst({
+    const conflict = await prisma.classRoom.findFirst({
       where: {
-        schoolId,
         roomId,
         shift: { in: conflictingShifts },
-        active: true,
-        ...(excludeClassId ? { id: { not: excludeClassId } } : {}),
+        class: { schoolId, active: true, ...(excludeClassId ? { id: { not: excludeClassId } } : {}) },
       },
-      select: { id: true, name: true, shift: true },
+      include: { class: { select: { name: true } } },
     });
     if (conflict) {
-      const label = SHIFT_LABELS[conflict.shift ?? ''] ?? conflict.shift;
-      throw { status: 409, code: 'ROOM_SHIFT_CONFLICT', message: `Esta sala já está ocupada no turno ${label} pela turma "${conflict.name}"` };
+      const label = SHIFT_LABELS[conflict.shift] ?? conflict.shift;
+      throw { status: 409, code: 'ROOM_SHIFT_CONFLICT', message: `Esta sala já está ocupada no turno ${label} pela turma "${conflict.class.name}"` };
     }
   }
 
   async createClass(schoolId: string, dto: CreateClassDto) {
-    // Impede turmas idênticas (mesmo nome + série + turno + ano letivo)
-    if (dto.name && dto.shift && dto.year) {
-      const duplicate = await prisma.class.findFirst({
-        where: {
-          schoolId,
-          name: { equals: dto.name, mode: 'insensitive' },
-          grade: dto.grade ? { equals: dto.grade, mode: 'insensitive' } : null,
-          shift: dto.shift,
-          year: dto.year,
-        },
-      });
-      if (duplicate) {
-        throw { status: 409, code: 'CLASS_DUPLICATE', message: 'Já existe uma turma com este Nome, Série, Turno e Ano letivo' };
+    const duplicate = await prisma.class.findFirst({
+      where: { schoolId, name: { equals: dto.name, mode: 'insensitive' }, grade: dto.grade ?? null, year: dto.year ?? null },
+    });
+    if (duplicate) {
+      throw { status: 409, code: 'CLASS_DUPLICATE', message: 'Já existe uma turma com este Nome, Série e Ano letivo' };
+    }
+
+    if (dto.classRooms?.length) {
+      for (const cr of dto.classRooms) {
+        await this._checkRoomConflict(schoolId, cr.roomId, cr.shift);
       }
     }
 
-    // Impede conflito de sala: mesma sala + mesmo turno
-    if (dto.roomId && dto.shift) {
-      await this._checkRoomConflict(schoolId, dto.roomId, dto.shift);
-    }
-
     return prisma.class.create({
-      data: { schoolId, name: dto.name, grade: dto.grade, shift: dto.shift, year: dto.year, room: dto.room, roomId: dto.roomId, coordinatorId: dto.coordinatorId, unitId: dto.unitId, active: true },
+      data: {
+        schoolId, name: dto.name, grade: dto.grade, year: dto.year,
+        coordinatorId: dto.coordinatorId, unitId: dto.unitId, active: true,
+        classRooms: dto.classRooms?.length
+          ? { create: dto.classRooms.map((cr) => ({ roomId: cr.roomId, shift: cr.shift, label: cr.label })) }
+          : undefined,
+      },
+      select: CLASS_SELECT as never,
     });
   }
 
   async updateClass(schoolId: string, classId: string, dto: UpdateClassDto) {
     const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
     if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
+    const { classRooms: _, ...data } = dto;
+    return prisma.class.update({ where: { id: classId }, data, select: CLASS_SELECT as never });
+  }
 
-    // Conflito de sala: usa roomId e shift resolvidos (dto pode vir parcial)
-    const effectiveRoomId = dto.roomId !== undefined ? dto.roomId : cls.roomId;
-    const effectiveShift = dto.shift !== undefined ? dto.shift : cls.shift;
-    if (effectiveRoomId && effectiveShift) {
-      await this._checkRoomConflict(schoolId, effectiveRoomId, effectiveShift, classId);
-    }
+  async addClassRoom(schoolId: string, classId: string, dto: ClassRoomDto) {
+    const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
+    if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
+    await this._checkRoomConflict(schoolId, dto.roomId, dto.shift, classId);
+    return prisma.classRoom.create({
+      data: { classId, roomId: dto.roomId, shift: dto.shift, label: dto.label },
+      include: { room: { select: { id: true, name: true } } },
+    });
+  }
 
-    return prisma.class.update({ where: { id: classId }, data: dto });
+  async removeClassRoom(schoolId: string, classId: string, roomId: string, shift: string) {
+    const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
+    if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
+    await prisma.classRoom.deleteMany({ where: { classId, roomId, shift } });
+    return { success: true };
   }
 
   async setClassActive(schoolId: string, classId: string, active: boolean) {

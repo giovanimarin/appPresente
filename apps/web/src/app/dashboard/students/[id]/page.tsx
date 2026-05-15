@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { studentsApi, guardiansApi } from '@/lib/api';
-import { ArrowLeft, Loader2, Pencil, Plus, X, Phone, Mail, UserCircle, Search, UserCheck, UserPlus, Shield, Banknote } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Plus, X, Phone, Mail, UserCircle, Search, UserCheck, UserPlus, Shield, Banknote, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { formatPhone, maskPhone, cn } from '@/lib/utils';
 
@@ -142,6 +142,10 @@ export default function StudentDetailPage() {
             {[student.class?.name, student.class?.grade, student.enrollmentCode ? `Mat: ${student.enrollmentCode}` : null].filter(Boolean).join(' · ')}
           </p>
         </div>
+        <Link href={`/dashboard/communications?studentId=${params.id}&label=${encodeURIComponent(student.name)}`}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
+          <MessageSquare size={14} /> Comunicados
+        </Link>
         <Link href={`/dashboard/students/${params.id}/edit`}
           className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
           <Pencil size={14} /> Editar

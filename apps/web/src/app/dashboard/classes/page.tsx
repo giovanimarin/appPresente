@@ -8,7 +8,7 @@ import { classesApi } from '@/lib/api';
 import ActionMenu from '@/components/ActionMenu';
 import { cn } from '@/lib/utils';
 import { getUser } from '@/lib/auth';
-import { Plus, Loader2, Users, Upload, Search, DoorOpen } from 'lucide-react';
+import { Plus, Loader2, Users, Upload, Search, DoorOpen, MessageSquare } from 'lucide-react';
 
 const SHIFT_LABELS: Record<string, string> = {
   MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
@@ -16,7 +16,8 @@ const SHIFT_LABELS: Record<string, string> = {
   manha: 'Manhã', tarde: 'Tarde', integral: 'Integral', noturno: 'Noturno',
 };
 
-type Class = { id: string; name: string; grade?: string; shift?: string; year?: number; active: boolean; _count?: { students: number }; roomRel?: { id: string; name: string } | null };
+type ClassRoom = { id: string; shift: string; room: { name: string } };
+type Class = { id: string; name: string; grade?: string; year?: number; active: boolean; _count?: { students: number }; classRooms?: ClassRoom[] };
 
 export default function ClassesPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function ClassesPage() {
   const filtered = useMemo(() => {
     let rows: Class[] = data?.data ?? [];
     if (search) rows = rows.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.grade?.toLowerCase().includes(search.toLowerCase()));
-    if (shiftFilter) rows = rows.filter((c) => c.shift === shiftFilter);
+    if (shiftFilter) rows = rows.filter((c) => c.classRooms?.some((cr) => cr.shift === shiftFilter));
     return rows;
   }, [data, search, shiftFilter]);
 
@@ -92,7 +93,15 @@ export default function ClassesPage() {
         ) : filtered.map((cls) => (
           <div key={cls.id} className={cn('bg-white rounded-xl border border-gray-200 p-5 relative', !cls.active && 'opacity-60')}>
             {!isTeacher && (
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3 flex items-center gap-1">
+                <Link
+                  href={`/dashboard/communications?classId=${cls.id}&label=${encodeURIComponent(cls.name)}`}
+                  className="p-1.5 text-gray-300 hover:text-primary-500 rounded-lg hover:bg-primary-50 transition-colors"
+                  title="Ver comunicados desta turma"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MessageSquare size={15} />
+                </Link>
                 <ActionMenu
                   isActive={cls.active}
                   onEdit={() => router.push(`/dashboard/classes/${cls.id}/edit`)}
@@ -114,17 +123,16 @@ export default function ClassesPage() {
               <h3 className="font-semibold text-gray-900">{cls.name}</h3>
               <div className="flex gap-3 mt-2 text-xs text-gray-500">
                 {cls.grade && <span>{cls.grade}</span>}
-                {cls.shift && <span>{SHIFT_LABELS[cls.shift] ?? cls.shift}</span>}
                 {cls.year && <span>{cls.year}</span>}
               </div>
               <div className="flex items-center justify-between mt-2">
                 {cls._count !== undefined && (
                   <p className="text-xs text-gray-400">{cls._count.students} aluno{cls._count.students !== 1 ? 's' : ''}</p>
                 )}
-                {cls.roomRel && (
+                {(cls.classRooms ?? []).length > 0 && (
                   <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                     <DoorOpen size={12} className="text-gray-400" />
-                    {cls.roomRel.name}
+                    {cls.classRooms!.map((cr) => `${cr.room.name} (${SHIFT_LABELS[cr.shift] ?? cr.shift})`).join(', ')}
                   </span>
                 )}
               </div>

@@ -7,7 +7,7 @@ export class CommunicationsService {
   // ── Staff: Listar comunicados ─────────────────────────────────────────────
 
   async list(schoolId: string, userId: string, role: string, query: CommunicationListQuery) {
-    const { page, limit, status, eventDateFrom, eventDateTo } = query;
+    const { page, limit, status, eventDateFrom, eventDateTo, classId, studentId } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { schoolId, createdBy: { not: null } };
@@ -21,8 +21,12 @@ export class CommunicationsService {
       };
     }
 
-    // Professor vê apenas das suas turmas
-    if (role === 'TEACHER') {
+    if (classId) {
+      where.commClasses = { some: { classId } };
+    } else if (studentId) {
+      where.commStudents = { some: { studentId } };
+    } else if (role === 'TEACHER') {
+      // Professor sem filtro específico vê apenas das suas turmas
       where.commClasses = {
         some: {
           class: { classTeachers: { some: { teacherId: userId } } },

@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { authenticate, requireStaff, requireRoles } from '../../middlewares/auth';
 import { validate } from '../../middlewares/validate';
-import { createClassSchema, updateClassSchema } from './classes.schemas';
+import { createClassSchema, updateClassSchema, addClassRoomSchema, removeClassRoomSchema } from './classes.schemas';
 import {
   listClasses, getClass, createClass, updateClass,
   archiveClass, reactivateClass, deleteClassPermanent, getClassStudents,
   addClassTeacher, removeClassTeacher,
+  addClassRoom, removeClassRoom,
 } from './classes.controller';
 
 const router = Router();
@@ -21,5 +22,7 @@ router.delete('/:id/permanent', requireRoles('ADMIN'), deleteClassPermanent);
 router.get('/:id/students', getClassStudents);
 router.post('/:id/teachers', requireRoles('ADMIN', 'COORDINATOR'), addClassTeacher);
 router.delete('/:id/teachers/:teacherId', requireRoles('ADMIN', 'COORDINATOR'), removeClassTeacher);
+router.post('/:id/rooms', requireRoles('ADMIN', 'SECRETARY'), validate(addClassRoomSchema), addClassRoom);
+router.delete('/:id/rooms', requireRoles('ADMIN', 'SECRETARY'), validate(removeClassRoomSchema), removeClassRoom);
 
 export default router;

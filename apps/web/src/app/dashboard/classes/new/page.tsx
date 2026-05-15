@@ -6,24 +6,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { classesApi, usersApi, roomsApi } from '@/lib/api';
+import { classesApi, usersApi } from '@/lib/api';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SearchableSelect from '@/components/SearchableSelect';
 
-const SHIFTS = [
-  { value: 'MATUTINO', label: 'Matutino' },
-  { value: 'VESPERTINO', label: 'Vespertino' },
-  { value: 'NOTURNO', label: 'Noturno' },
-  { value: 'INTEGRAL', label: 'Integral' },
-];
-
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
   grade: z.string().optional(),
-  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL', '']).optional(),
   year: z.coerce.number().int().min(2020).max(2100).optional().or(z.literal(0)),
-  roomId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   coordinatorId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
 });
 type FormData = z.infer<typeof schema>;
@@ -39,32 +30,23 @@ export default function NewClassPage() {
   });
   const coordinators = usersData?.data?.filter((u: { role: string }) => u.role === 'COORDINATOR') ?? [];
 
-  const { data: roomsData } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: () => roomsApi.list().then((r) => r.data),
-  });
-  const rooms: { id: string; name: string }[] = Array.isArray(roomsData) ? roomsData : (roomsData?.data ?? []);
-
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { year: new Date().getFullYear() },
   });
   const coordinatorId = watch('coordinatorId');
-  const roomId = watch('roomId');
 
   async function onSubmit(data: FormData) {
     setError('');
     try {
-      await classesApi.create({
+      const res = await classesApi.create({
         name: data.name,
         grade: data.grade || undefined,
-        shift: data.shift || undefined,
         year: data.year || undefined,
-        roomId: data.roomId || undefined,
         coordinatorId: data.coordinatorId,
       });
       await qc.invalidateQueries({ queryKey: ['classes'] });
-      router.push('/dashboard/classes');
+      router.push(`/dashboard/classes/${res.data.id}`);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
       setError(e.response?.data?.error ?? 'Erro ao criar turma.');
@@ -99,27 +81,9 @@ export default function NewClassPage() {
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Turno</label>
-              <select {...register('shift')} className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                <option value="">Não informado</option>
-                {SHIFTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ano letivo</label>
               <input {...register('year')} type="number" min={2020} max={2100}
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sala</label>
-              <SearchableSelect
-                options={rooms.map((r) => ({ id: r.id, label: r.name }))}
-                value={roomId ?? ''}
-                onChange={(v) => setValue('roomId', v || undefined, { shouldDirty: true })}
-                emptyLabel="Nenhuma"
-              />
             </div>
           </div>
           <div>
@@ -131,6 +95,7 @@ export default function NewClassPage() {
               emptyLabel="Nenhum"
             />
           </div>
+          <p className="text-xs text-gray-400">As salas e turnos podem ser vinculados após criar a turma.</p>
         </div>
 
         {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-700">{error}</p></div>}

@@ -92,6 +92,8 @@ export const classesApi = {
   reactivate: (id: string) => api.post(`/classes/${id}/reactivate`),
   deletePermanent: (id: string) => api.delete(`/classes/${id}/permanent`),
   students: (id: string) => api.get(`/classes/${id}/students`),
+  addRoom: (id: string, data: unknown) => api.post(`/classes/${id}/rooms`, data),
+  removeRoom: (id: string, data: unknown) => api.delete(`/classes/${id}/rooms`, { data }),
   addTeacher: (classId: string, data: unknown) => api.post(`/classes/${classId}/teachers`, data),
   removeTeacher: (classId: string, teacherId: string) => api.delete(`/classes/${classId}/teachers/${teacherId}`),
 };

@@ -1,17 +1,30 @@
 import { z } from 'zod';
 
+const SHIFTS = ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'] as const;
+
+export const classRoomSchema = z.object({
+  roomId: z.string().uuid(),
+  shift: z.enum(SHIFTS),
+  label: z.string().max(100).optional(),
+});
+
 export const createClassSchema = z.object({
   name: z.string().min(1).max(100),
   grade: z.string().max(50).optional(),
-  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL', 'manha', 'tarde', 'integral', 'noturno']).optional(),
   year: z.number().int().min(2020).max(2100).optional(),
-  room: z.string().max(20).optional(),
-  roomId: z.string().uuid().optional(),
   coordinatorId: z.string().uuid().optional(),
   unitId: z.string().uuid().optional(),
+  classRooms: z.array(classRoomSchema).optional(),
 });
 
 export const updateClassSchema = createClassSchema.partial();
+
+export const addClassRoomSchema = classRoomSchema;
+
+export const removeClassRoomSchema = z.object({
+  roomId: z.string().uuid(),
+  shift: z.enum(SHIFTS),
+});
 
 export const createStudentSchema = z.object({
   name: z.string().min(2).max(200),
@@ -29,5 +42,6 @@ export const updateStudentSchema = createStudentSchema.partial().omit({ classId:
 
 export type CreateClassDto = z.infer<typeof createClassSchema>;
 export type UpdateClassDto = z.infer<typeof updateClassSchema>;
+export type ClassRoomDto = z.infer<typeof classRoomSchema>;
 export type CreateStudentDto = z.infer<typeof createStudentSchema>;
 export type UpdateStudentDto = z.infer<typeof updateStudentSchema>;

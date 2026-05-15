@@ -6,24 +6,15 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { classesApi, usersApi, roomsApi } from '@/lib/api';
+import { classesApi, usersApi } from '@/lib/api';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SearchableSelect from '@/components/SearchableSelect';
 
-const SHIFTS = [
-  { value: 'MATUTINO', label: 'Matutino' },
-  { value: 'VESPERTINO', label: 'Vespertino' },
-  { value: 'NOTURNO', label: 'Noturno' },
-  { value: 'INTEGRAL', label: 'Integral' },
-];
-
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
   grade: z.string().optional(),
-  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL', 'manha', 'tarde', 'integral', 'noturno', '']).optional(),
   year: z.coerce.number().int().min(2020).max(2100).optional().or(z.literal(0)),
-  roomId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   coordinatorId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
 });
 type FormData = z.infer<typeof schema>;
@@ -44,26 +35,17 @@ export default function EditClassPage() {
   });
   const coordinators = usersData?.data?.filter((u: { role: string }) => u.role === 'COORDINATOR') ?? [];
 
-  const { data: roomsData } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: () => roomsApi.list().then((r) => r.data),
-  });
-  const rooms: { id: string; name: string }[] = Array.isArray(roomsData) ? roomsData : (roomsData?.data ?? []);
-
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
   const coordinatorId = watch('coordinatorId');
-  const roomId = watch('roomId');
 
   useEffect(() => {
     if (cls) {
       reset({
         name: cls.name,
         grade: cls.grade ?? '',
-        shift: cls.shift ?? '',
         year: cls.year ?? 0,
-        roomId: cls.roomId ?? '',
         coordinatorId: cls.coordinator?.id ?? '',
       });
     }
@@ -74,10 +56,8 @@ export default function EditClassPage() {
     try {
       await classesApi.update(params.id, {
         ...data,
-        shift: data.shift || undefined,
         year: data.year || undefined,
         grade: data.grade || undefined,
-        roomId: data.roomId || undefined,
       });
       await qc.invalidateQueries({ queryKey: ['classes'] });
       router.push('/dashboard/classes');
@@ -110,26 +90,8 @@ export default function EditClassPage() {
               <input {...register('grade')} placeholder="Ex: 3º Ano EF" className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Turno</label>
-              <select {...register('shift')} className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                <option value="">Não informado</option>
-                {SHIFTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ano letivo</label>
               <input {...register('year')} type="number" min={2020} max={2100} className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sala</label>
-              <SearchableSelect
-                options={rooms.map((r) => ({ id: r.id, label: r.name }))}
-                value={roomId ?? ''}
-                onChange={(v) => setValue('roomId', v || undefined, { shouldDirty: true })}
-                emptyLabel="Nenhuma"
-              />
             </div>
           </div>
           <div>

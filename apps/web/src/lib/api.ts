@@ -173,6 +173,7 @@ export const formsApi = {
   submissions: (id: string, params?: unknown) => api.get(`/forms/${id}/submissions`, { params }),
   resolve: (formId: string, submissionId: string, data?: unknown) =>
     api.post(`/forms/${formId}/submissions/${submissionId}/resolve`, data),
+  allSubmissions: (params?: unknown) => api.get('/forms/submissions', { params }),
   guardianForms: () => api.get('/forms/guardian/available'),
   submit: (id: string, data: unknown) => api.post(`/forms/guardian/${id}/submit`, data),
   mySubmissions: () => api.get('/forms/guardian/submissions'),

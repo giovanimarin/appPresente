@@ -40,6 +40,13 @@ export async function updateForm(req: AuthRequest, res: Response, next: NextFunc
   } catch (err) { handleError(err, res, next); }
 }
 
+export async function listAllSubmissions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await formsSvc.listAllSubmissions(req.user!.schoolId, req.query as never);
+    res.json(result);
+  } catch (err) { handleError(err, res, next); }
+}
+
 export async function listSubmissions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await formsSvc.listSubmissions(req.user!.schoolId, req.params.id, req.query as never);

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { isAuthenticated, getUser, clearTokens } from '@/lib/auth';
 import {
-  LayoutDashboard, MessageSquare, Calendar, FileText,
+  LayoutDashboard, MessageSquare, Calendar, FileText, Inbox,
   Users, GraduationCap, LogOut, School, Menu, X, BookUser, CalendarCheck, UserCircle, DoorOpen,
   type LucideIcon,
 } from 'lucide-react';
@@ -50,10 +50,11 @@ const navGroups: NavGroup[] = [
     label: 'Agenda',
     roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'],
     items: [
-      { href: '/dashboard/communications', icon: MessageSquare, label: 'Comunicados',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-      { href: '/dashboard/appointments',   icon: CalendarCheck, label: 'Agendamentos', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
-      { href: '/dashboard/forms',          icon: FileText,      label: 'Formulários',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
-      { href: '/dashboard/agenda',         icon: Calendar,      label: 'Agenda',       roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/communications',        icon: MessageSquare, label: 'Comunicados',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/appointments',          icon: CalendarCheck, label: 'Agendamentos', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard/forms/submissions',     icon: Inbox,         label: 'Pedidos',      roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+      { href: '/dashboard/forms',                 icon: FileText,      label: 'Formulários',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+      { href: '/dashboard/agenda',                icon: Calendar,      label: 'Agenda',       roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
     ],
   },
 ];
@@ -124,7 +125,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   const Icon = item.icon;
                   const active = item.href === '/dashboard'
                     ? pathname === '/dashboard'
-                    : pathname === item.href || pathname.startsWith(item.href + '/');
+                    : item.href === '/dashboard/forms'
+                      ? pathname === '/dashboard/forms' || (pathname.startsWith('/dashboard/forms/') && !pathname.startsWith('/dashboard/forms/submissions'))
+                      : pathname === item.href || pathname.startsWith(item.href + '/');
                   return (
                     <Link
                       key={item.href}

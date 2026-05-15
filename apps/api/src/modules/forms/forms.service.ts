@@ -1,6 +1,6 @@
 import { prisma } from '../../config/database';
 import { generateProtocol } from '../../utils/protocol';
-import type { CreateFormDto, UpdateFormDto, SubmitFormDto, FormListQuery, SubmissionListQuery } from './forms.schemas';
+import type { CreateFormDto, UpdateFormDto, SubmitFormDto, FormListQuery, SubmissionListQuery, AllSubmissionsQuery } from './forms.schemas';
 
 export class FormsService {
   // ── Staff: Listar formulários ─────────────────────────────────────────────
@@ -127,6 +127,34 @@ export class FormsService {
     });
   }
 
+  // ── Staff: Listar todas as submissões da escola ───────────────────────────
+
+  async listAllSubmissions(schoolId: string, query: AllSubmissionsQuery) {
+    const { page, limit, formId, status } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { schoolId };
+    if (formId) where.formId = formId;
+    if (status) where.status = status;
+
+    const [data, total] = await Promise.all([
+      prisma.formSubmission.findMany({
+        where,
+        include: {
+          form: { select: { id: true, title: true, fields: true } },
+          guardian: { select: { id: true, name: true, phone: true } },
+          student: { select: { id: true, name: true } },
+        },
+        orderBy: { submittedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.formSubmission.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
+  }
+
   // ── Guardian: Listar formulários disponíveis ──────────────────────────────
 
   async getGuardianForms(guardianId: string) {
@@ -171,7 +199,7 @@ export class FormsService {
     if (!form) throw { status: 404, code: 'FORM_NOT_FOUND', message: 'Formulário não encontrado ou encerrado' };
 
     const link = await prisma.studentGuardian.findFirst({
-      where: { guardianId, studentId: dto.studentId, status: 'ACTIVE' },
+      where: { guardianId, studentId: dto.studentId, status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
       include: { student: { select: { schoolId: true } } },
     });
     if (!link) throw { status: 403, code: 'FORBIDDEN', message: 'Sem permissão para este aluno' };

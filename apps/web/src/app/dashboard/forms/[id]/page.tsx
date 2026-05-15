@@ -142,12 +142,21 @@ export default function FormDetailPage() {
               </div>
               {expandedId === sub.id && (
                 <div className="mt-3 ml-0 bg-gray-50 rounded-lg p-3 space-y-2">
-                  {Object.entries(sub.answers ?? {}).map(([key, val]) => (
-                    <div key={key}>
-                      <p className="text-xs font-medium text-gray-500">{key}</p>
-                      <p className="text-sm text-gray-800">{String(val)}</p>
-                    </div>
-                  ))}
+                  {Object.entries(sub.answers ?? {}).map(([key, val]) => {
+                    const field = (form?.fields as Field[] ?? []).find((f) => f.id === key);
+                    const label = field?.label ?? key;
+                    const display = field?.type === 'FILE'
+                      ? (val as { filename?: string })?.filename ?? '—'
+                      : field?.type === 'CHECKBOX'
+                        ? (val ? 'Sim' : 'Não')
+                        : String(val);
+                    return (
+                      <div key={key}>
+                        <p className="text-xs font-medium text-gray-500">{label}</p>
+                        <p className="text-sm text-gray-800">{display}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

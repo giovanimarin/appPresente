@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { CalendarDays } from 'lucide-react';
 
 interface DateInputProps {
   value?: string; // yyyy-mm-dd
@@ -32,6 +33,7 @@ function applyMask(raw: string): string {
 
 export default function DateInput({ value = '', onChange, className, name }: DateInputProps) {
   const [display, setDisplay] = useState(() => isoToDisplay(value));
+  const pickerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDisplay(isoToDisplay(value));
@@ -43,16 +45,40 @@ export default function DateInput({ value = '', onChange, className, name }: Dat
     onChange?.(displayToIso(masked));
   }
 
+  function handlePickerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const iso = e.target.value; // yyyy-mm-dd
+    setDisplay(isoToDisplay(iso));
+    onChange?.(iso);
+  }
+
   return (
-    <input
-      type="text"
-      name={name}
-      value={display}
-      onChange={handleChange}
-      placeholder="dd/mm/aaaa"
-      className={className}
-      maxLength={10}
-      inputMode="numeric"
-    />
+    <div className="relative">
+      <input
+        type="text"
+        name={name}
+        value={display}
+        onChange={handleChange}
+        placeholder="dd/mm/aaaa"
+        className={className}
+        maxLength={10}
+        inputMode="numeric"
+      />
+      <button
+        type="button"
+        onClick={() => pickerRef.current?.showPicker?.()}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        tabIndex={-1}
+      >
+        <CalendarDays size={15} />
+      </button>
+      <input
+        ref={pickerRef}
+        type="date"
+        value={displayToIso(display)}
+        onChange={handlePickerChange}
+        className="absolute inset-0 opacity-0 pointer-events-none w-full"
+        tabIndex={-1}
+      />
+    </div>
   );
 }

@@ -15,11 +15,11 @@ export default function GuardianHome() {
   useEffect(() => { getUser().then(setUser); }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['guardian-children'],
-    queryFn: () => guardianApi.children().then((r) => r.data),
+    queryKey: ['guardian-me'],
+    queryFn: () => guardianApi.me().then((r) => r.data),
   });
 
-  const children: Child[] = data?.data ?? [];
+  const children: Child[] = data?.studentGuardians?.map((sg: { student: Child }) => sg.student) ?? [];
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">

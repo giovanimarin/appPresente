@@ -238,6 +238,10 @@ export default function GuardianFormsPage() {
       qc.invalidateQueries({ queryKey: ['guardian-my-form-submissions'] });
       closeModal();
     },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      alert(msg ?? 'Erro ao enviar pedido. Tente novamente.');
+    },
   });
 
   function closeModal() {

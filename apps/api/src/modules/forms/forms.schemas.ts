@@ -45,8 +45,16 @@ export const submissionListQuerySchema = z.object({
   status: z.enum(['PENDING', 'UNDER_REVIEW', 'RESOLVED']).optional(),
 });
 
+export const allSubmissionsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  formId: z.string().uuid().optional(),
+  status: z.enum(['PENDING', 'UNDER_REVIEW', 'RESOLVED']).optional(),
+});
+
 export type CreateFormDto = z.infer<typeof createFormSchema>;
 export type UpdateFormDto = z.infer<typeof updateFormSchema>;
 export type SubmitFormDto = z.infer<typeof submitFormSchema>;
 export type FormListQuery = z.infer<typeof formListQuerySchema>;
 export type SubmissionListQuery = z.infer<typeof submissionListQuerySchema>;
+export type AllSubmissionsQuery = z.infer<typeof allSubmissionsQuerySchema>;

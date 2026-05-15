@@ -87,6 +87,5 @@ export const appointmentsApi = {
 
 // Guardian (self)
 export const guardianApi = {
-  me: () => api.get('/guardian/me'),
-  children: () => api.get('/guardian/children'),
+  me: () => api.get('/guardians/me'),
 };

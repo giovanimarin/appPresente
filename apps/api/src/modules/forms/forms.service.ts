@@ -1,5 +1,4 @@
 import { prisma } from '../../config/database';
-import { generateProtocol } from '../../utils/protocol';
 import type { CreateFormDto, UpdateFormDto, SubmitFormDto, FormListQuery, SubmissionListQuery, AllSubmissionsQuery } from './forms.schemas';
 
 export class FormsService {
@@ -208,7 +207,14 @@ export class FormsService {
       throw { status: 403, code: 'FORBIDDEN', message: 'Aluno não pertence à escola deste formulário' };
     }
 
-    const protocolNumber = await generateProtocol(form.schoolId);
+    const year = new Date().getFullYear();
+    const count = await prisma.formSubmission.count({
+      where: {
+        schoolId: form.schoolId,
+        submittedAt: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31`) },
+      },
+    });
+    const protocolNumber = `${year}-${String(count + 1).padStart(4, '0')}`;
 
     return prisma.formSubmission.create({
       data: {

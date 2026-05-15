@@ -6,12 +6,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { formsApi } from '@/lib/api';
 import { ArrowLeft, Plus, Trash2, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
-type FieldType = 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX' | 'DATE' | 'FILE';
+type FieldType = 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX' | 'DATE' | 'TIME' | 'FILE';
 type Field = { id: string; type: FieldType; label: string; required: boolean; options: string[]; placeholder: string };
 
 const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   TEXT: 'Texto curto', TEXTAREA: 'Texto longo', SELECT: 'Lista de opções',
-  CHECKBOX: 'Caixa de seleção', DATE: 'Data', FILE: 'Arquivo',
+  CHECKBOX: 'Caixa de seleção', DATE: 'Data', TIME: 'Horário', FILE: 'Arquivo',
 };
 
 function uid(): string {

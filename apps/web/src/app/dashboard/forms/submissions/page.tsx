@@ -6,7 +6,7 @@ import { formsApi } from '@/lib/api';
 import { formatDate, cn } from '@/lib/utils';
 import { CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, Loader2, Paperclip } from 'lucide-react';
 
-type Field = { id: string; type: string; label: string; required: boolean };
+type Field = { id: string; type: 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX' | 'DATE' | 'TIME' | 'FILE'; label: string; required: boolean };
 type Form = { id: string; title: string; fields: Field[] };
 type Submission = {
   id: string;
@@ -25,6 +25,14 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string; ico
   RESOLVED:     { label: 'Resolvido',  color: 'text-green-700',  bg: 'bg-green-100',  icon: CheckCircle2 },
 };
 
+function formatIsoToBR(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return value;
+}
+
 function AnswerValue({ field, value }: { field?: Field; value: unknown }) {
   if (field?.type === 'FILE') {
     const f = value as { filename?: string };
@@ -36,6 +44,8 @@ function AnswerValue({ field, value }: { field?: Field; value: unknown }) {
     );
   }
   if (field?.type === 'CHECKBOX') return <span>{value ? 'Sim' : 'Não'}</span>;
+  if (field?.type === 'DATE') return <span>{formatIsoToBR(String(value ?? ''))}</span>;
+  if (field?.type === 'TIME') return <span>{String(value ?? '—')}</span>;
   return <span>{String(value ?? '—')}</span>;
 }
 

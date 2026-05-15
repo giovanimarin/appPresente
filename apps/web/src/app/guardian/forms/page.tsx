@@ -23,7 +23,7 @@ type MyRequest = {
 
 type FormField = {
   id: string;
-  type: 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX' | 'DATE' | 'FILE';
+  type: 'TEXT' | 'TEXTAREA' | 'SELECT' | 'CHECKBOX' | 'DATE' | 'TIME' | 'FILE';
   label: string;
   required: boolean;
   options?: string[];
@@ -100,6 +100,15 @@ function FormFieldInput({ field, value, onChange, onFileChange, fileValue }: {
       );
     case 'DATE':
       return <DateInput value={(value as string) ?? ''} onChange={onChange} className={base} />;
+    case 'TIME':
+      return (
+        <input
+          type="time"
+          value={(value as string) ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          className={base}
+        />
+      );
     case 'CHECKBOX':
       return (
         <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -239,7 +248,8 @@ export default function GuardianFormsPage() {
       closeModal();
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const data = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data;
+      const msg = data?.message ?? data?.error;
       alert(msg ?? 'Erro ao enviar pedido. Tente novamente.');
     },
   });
@@ -377,7 +387,11 @@ export default function GuardianFormsPage() {
                         return (
                           <div key={field.id} className="text-xs text-gray-600">
                             <span className="font-medium text-gray-500">{field.label}: </span>
-                            {field.type === 'CHECKBOX' ? (val ? 'Sim' : 'Não') : String(val)}
+                            {field.type === 'CHECKBOX'
+                              ? (val ? 'Sim' : 'Não')
+                              : field.type === 'DATE' && /^\d{4}-\d{2}-\d{2}$/.test(String(val))
+                                ? String(val).split('-').reverse().join('/')
+                                : String(val)}
                           </div>
                         );
                       })}

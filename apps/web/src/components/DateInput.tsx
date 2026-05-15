@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { CalendarDays } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DateInputProps {
   value?: string; // yyyy-mm-dd
@@ -59,7 +60,7 @@ export default function DateInput({ value = '', onChange, className, name }: Dat
         value={display}
         onChange={handleChange}
         placeholder="dd/mm/aaaa"
-        className={className}
+        className={cn(className, 'pr-9')}
         maxLength={10}
         inputMode="numeric"
       />

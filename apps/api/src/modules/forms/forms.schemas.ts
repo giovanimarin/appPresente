@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const formFieldSchema = z.object({
   id: z.string(),
-  type: z.enum(['TEXT', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'DATE', 'FILE']),
+  type: z.enum(['TEXT', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'DATE', 'TIME', 'FILE']),
   label: z.string().min(1).max(200),
   required: z.boolean().default(false),
   options: z.array(z.string()).optional(), // for SELECT

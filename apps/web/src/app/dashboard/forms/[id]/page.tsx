@@ -145,11 +145,14 @@ export default function FormDetailPage() {
                   {Object.entries(sub.answers ?? {}).map(([key, val]) => {
                     const field = (form?.fields as Field[] ?? []).find((f) => f.id === key);
                     const label = field?.label ?? key;
+                    const raw = String(val);
                     const display = field?.type === 'FILE'
                       ? (val as { filename?: string })?.filename ?? '—'
                       : field?.type === 'CHECKBOX'
                         ? (val ? 'Sim' : 'Não')
-                        : String(val);
+                        : field?.type === 'DATE' && /^\d{4}-\d{2}-\d{2}$/.test(raw)
+                          ? raw.split('-').reverse().join('/')
+                          : raw;
                     return (
                       <div key={key}>
                         <p className="text-xs font-medium text-gray-500">{label}</p>

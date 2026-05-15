@@ -43,7 +43,7 @@ const FORM_TEMPLATES = [
     iconColor: 'text-purple-500',
     fields: [
       { type: 'DATE', label: 'Data', required: true, options: [], placeholder: '' },
-      { type: 'TEXT', label: 'Horário de saída', required: true, options: [], placeholder: 'Ex: 14:30' },
+      { type: 'TIME', label: 'Horário de saída', required: true, options: [], placeholder: '' },
       { type: 'SELECT', label: 'Motivo', required: true, options: ['Consulta médica', 'Compromisso familiar', 'Outro'], placeholder: '' },
       { type: 'TEXT', label: 'Quem irá buscar', required: true, options: [], placeholder: 'Nome completo' },
       { type: 'TEXTAREA', label: 'Observações', required: false, options: [], placeholder: 'Informações adicionais...' },

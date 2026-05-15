@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createClassSchema = z.object({
   name: z.string().min(1).max(100),
   grade: z.string().max(50).optional(),
-  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'manha', 'tarde', 'integral', 'noturno']).optional(),
+  shift: z.enum(['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL', 'manha', 'tarde', 'integral', 'noturno']).optional(),
   year: z.number().int().min(2020).max(2100).optional(),
   room: z.string().max(20).optional(),
   roomId: z.string().uuid().optional(),

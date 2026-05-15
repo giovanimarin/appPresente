@@ -747,7 +747,9 @@ export class CommunicationsService {
     eventDate?: Date | null,
     label?: string,
   ) {
-    // Evento do dia do envio
+    // Evento do dia do envio — início do dia para allDay
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const sentEvent = await prisma.agendaEvent.create({
       data: {
         schoolId,
@@ -756,7 +758,7 @@ export class CommunicationsService {
         title: label ?? title,
         description: label ? undefined : 'Comunicado enviado',
         eventType: this._commTypeToEventType(schoolType),
-        startsAt: new Date(),
+        startsAt: today,
         allDay: true,
       },
     });

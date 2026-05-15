@@ -177,6 +177,7 @@ export class AgendaService {
     const classIds = [...new Set(links.map((l) => l.student.classId).filter(Boolean))] as string[];
     const schoolIds = [...new Set(links.map((l) => l.student.schoolId))];
     const from = new Date();
+    from.setHours(0, 0, 0, 0); // início do dia de hoje
     const to = new Date();
     to.setDate(to.getDate() + days);
 

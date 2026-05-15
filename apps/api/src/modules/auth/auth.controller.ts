@@ -145,6 +145,29 @@ export async function completeFirstAccess(req: Request, res: Response, next: Nex
   }
 }
 
+export async function validateGuardianFirstAccessToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await authService.validateGuardianFirstAccessToken(req.query.token as string);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
+export async function completeGuardianFirstAccess(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { token, password } = req.body;
+    const result = await authService.completeGuardianFirstAccess(token, password);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
 export async function updateMe(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await authService.updateMe(req.user!.id, req.user!.schoolId, req.body);

@@ -3,7 +3,7 @@ import { validate } from '../../middlewares/validate';
 import { authenticate } from '../../middlewares/auth';
 import { redisRateLimit } from '../../middlewares/rateLimit';
 import { loginSchema, otpSendSchema, otpVerifySchema, refreshSchema, guardianLoginSchema, guardianSetPasswordSchema, updateMeSchema, firstAccessSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schemas';
-import { login, sendOtp, verifyOtp, refresh, logout, me, updateMe, guardianLogin, guardianSetPassword, validateFirstAccessToken, completeFirstAccess, forgotPassword, resetPassword } from './auth.controller';
+import { login, sendOtp, verifyOtp, refresh, logout, me, updateMe, guardianLogin, guardianSetPassword, validateFirstAccessToken, completeFirstAccess, forgotPassword, resetPassword, validateGuardianFirstAccessToken, completeGuardianFirstAccess } from './auth.controller';
 
 const router = Router();
 
@@ -72,6 +72,16 @@ router.post(
   redisRateLimit({ windowSeconds: 60, max: 10, keyPrefix: 'rl:first_access' }),
   validate(firstAccessSchema),
   completeFirstAccess,
+);
+
+// GET  /auth/guardian/first-access?token=xxx — Valida token de primeiro acesso do responsável
+router.get('/guardian/first-access', validateGuardianFirstAccessToken);
+
+// POST /auth/guardian/first-access — Define senha no primeiro acesso do responsável
+router.post(
+  '/guardian/first-access',
+  redisRateLimit({ windowSeconds: 60, max: 10, keyPrefix: 'rl:guardian_first_access' }),
+  completeGuardianFirstAccess,
 );
 
 // POST /auth/refresh — Renova access token

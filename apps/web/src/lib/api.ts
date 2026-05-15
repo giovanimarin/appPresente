@@ -56,6 +56,8 @@ export const authApi = {
   guardianSetPassword: (data: { currentPassword?: string; newPassword: string }) => api.post('/auth/guardian/set-password', data),
   validateFirstAccessToken: (token: string) => api.get(`/auth/staff/first-access?token=${token}`),
   completeFirstAccess: (token: string, password: string) => api.post('/auth/staff/first-access', { token, password }),
+  validateGuardianFirstAccess: (token: string) => api.get(`/auth/guardian/first-access?token=${token}`),
+  completeGuardianFirstAccess: (token: string, password: string) => api.post('/auth/guardian/first-access', { token, password }),
   forgotPassword: (email: string) => api.post('/auth/staff/forgot-password', { email }),
   resetPassword: (token: string, password: string) => api.post('/auth/staff/reset-password', { token, password }),
 };

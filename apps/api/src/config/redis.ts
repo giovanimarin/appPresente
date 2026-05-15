@@ -21,5 +21,6 @@ export const redisKeys = {
   otpAttempts: (phone: string) => `otp_attempts:${phone}`,
   rateLimit: (identifier: string) => `rate:${identifier}`,
   firstAccess: (token: string) => `first_access:${token}`,
+  guardianFirstAccess: (token: string) => `guardian_first_access:${token}`,
   passwordReset: (token: string) => `pwd_reset:${token}`,
 };

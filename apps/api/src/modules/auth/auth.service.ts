@@ -364,6 +364,30 @@ export class AuthService {
     return { ok: true, message: 'Senha definida com sucesso. Faça login para continuar.' };
   }
 
+  // ── Primeiro Acesso do Responsável ───────────────────────────────────────
+
+  async validateGuardianFirstAccessToken(token: string) {
+    const guardianId = await redis.get(redisKeys.guardianFirstAccess(token));
+    if (!guardianId) throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
+    const guardian = await prisma.guardian.findUnique({
+      where: { id: guardianId },
+      select: { id: true, name: true, email: true },
+    });
+    if (!guardian) throw { status: 404, code: 'NOT_FOUND', message: 'Responsável não encontrado' };
+    return { valid: true, guardian };
+  }
+
+  async completeGuardianFirstAccess(token: string, password: string) {
+    const guardianId = await redis.get(redisKeys.guardianFirstAccess(token));
+    if (!guardianId) throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
+
+    const hash = await bcrypt.hash(password, 10);
+    await prisma.guardian.update({ where: { id: guardianId }, data: { passwordHash: hash } });
+    await redis.del(redisKeys.guardianFirstAccess(token));
+
+    return { ok: true, message: 'Senha definida com sucesso. Faça login para continuar.' };
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private async _getSchoolIdByPhone(phone: string): Promise<string> {

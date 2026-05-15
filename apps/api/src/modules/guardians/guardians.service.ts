@@ -1,4 +1,6 @@
+import { randomBytes } from 'crypto';
 import { prisma } from '../../config/database';
+import { redis, redisKeys } from '../../config/redis';
 import { sendSms } from '../../utils/sms';
 import { generateOtp, storeOtp } from '../../utils/otp';
 import { sendGuardianWelcomeEmail } from '../../utils/mailer';
@@ -276,7 +278,11 @@ export class GuardiansService {
     });
 
     if (email) {
-      await sendGuardianWelcomeEmail(email, guardian.name, school?.name ?? 'Escola');
+      const token = randomBytes(32).toString('hex');
+      await redis.set(redisKeys.guardianFirstAccess(token), guardian.id, 'EX', 60 * 60 * 72);
+      const webUrl = process.env.WEB_URL ?? 'https://app.apppresente.com.br';
+      const firstAccessUrl = `${webUrl}/guardian/primeiro-acesso?token=${token}`;
+      await sendGuardianWelcomeEmail(email, guardian.name, school?.name ?? 'Escola', firstAccessUrl);
     }
 
     return guardian;

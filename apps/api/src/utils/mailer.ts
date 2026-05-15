@@ -113,15 +113,19 @@ export async function sendGuardianWelcomeEmail(
   to: string,
   guardianName: string,
   schoolName: string,
+  firstAccessUrl: string,
 ): Promise<void> {
-  const subject = `Cadastro no Presente — ${schoolName}`;
+  const subject = `Seu acesso ao Presente — ${schoolName}`;
 
   const text = [
     `Olá${guardianName ? `, ${guardianName}` : ''}!`,
     '',
     `Você foi cadastrado(a) como responsável no Presente pela escola ${schoolName}.`,
     '',
-    'Em breve você receberá o convite com instruções de acesso.',
+    'Para definir sua senha e acessar o sistema, clique no link abaixo:',
+    firstAccessUrl,
+    '',
+    'Este link expira em 72 horas.',
     '',
     'Caso não reconheça este cadastro, entre em contato com a escola.',
   ].join('\n');
@@ -131,8 +135,11 @@ export async function sendGuardianWelcomeEmail(
       <h2 style="color:#1f2937">Bem-vindo ao Presente!</h2>
       <p style="color:#555">Olá${guardianName ? `, <strong>${guardianName}</strong>` : ''}!</p>
       <p style="color:#555">Você foi cadastrado(a) como responsável no Presente pela escola <strong>${schoolName}</strong>.</p>
-      <p style="color:#555">Em breve você receberá o convite com instruções de acesso.</p>
-      <p style="color:#9ca3af;font-size:13px">Caso não reconheça este cadastro, entre em contato com a escola.</p>
+      <p style="color:#555">Clique no botão abaixo para definir sua senha e acessar o sistema:</p>
+      <a href="${firstAccessUrl}" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0">
+        Definir minha senha
+      </a>
+      <p style="color:#9ca3af;font-size:13px">Este link expira em 72 horas. Caso não reconheça este cadastro, entre em contato com a escola.</p>
     </div>
   `;
 

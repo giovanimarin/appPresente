@@ -26,7 +26,7 @@ type PushJobData = CommPushJobData | EventPushJobData;
 async function getGuardianTokensForClasses(classIds: string[], schoolId: string) {
   const sgs = await prisma.studentGuardian.findMany({
     where: {
-      status: 'ACTIVE',
+      status: { in: ['ACTIVE', 'PENDING_INVITE'] },
       student: { schoolId, classId: { in: classIds } },
       guardian: { pushToken: { not: null } },
     },
@@ -38,7 +38,7 @@ async function getGuardianTokensForClasses(classIds: string[], schoolId: string)
 async function getGuardianTokensForStudents(studentIds: string[], schoolId: string) {
   const sgs = await prisma.studentGuardian.findMany({
     where: {
-      status: 'ACTIVE',
+      status: { in: ['ACTIVE', 'PENDING_INVITE'] },
       studentId: { in: studentIds },
       student: { schoolId },
       guardian: { pushToken: { not: null } },

@@ -69,9 +69,15 @@ export class AuthService {
   // ── Guardian: Login com e-mail + senha ───────────────────────────────────
 
   async guardianLogin(dto: GuardianLoginDto) {
-    const guardian = await prisma.guardian.findFirst({
-      where: { email: dto.email, active: true },
-    });
+    // Prefer the guardian record that actually has a password set
+    const guardian =
+      (await prisma.guardian.findFirst({
+        where: { email: dto.email, active: true, passwordHash: { not: null } },
+        orderBy: { activatedAt: 'desc' },
+      })) ??
+      (await prisma.guardian.findFirst({
+        where: { email: dto.email, active: true },
+      }));
 
     if (!guardian) {
       throw { status: 401, code: 'INVALID_CREDENTIALS', message: 'E-mail ou senha inválidos' };
@@ -161,17 +167,27 @@ export class AuthService {
       throw { status: 401, code: 'INVALID_OTP', message: result.reason };
     }
 
-    const guardian = await prisma.guardian.findFirst({
-      where: { email: dto.email },
-      include: {
-        studentGuardians: {
-          where: { status: 'ACTIVE' },
-          include: {
-            student: { select: { id: true, name: true, classId: true } },
+    // Prefer the guardian with students linked; fall back to any guardian with that email
+    const guardian =
+      (await prisma.guardian.findFirst({
+        where: { email: dto.email, studentGuardians: { some: {} } },
+        orderBy: { activatedAt: 'desc' },
+        include: {
+          studentGuardians: {
+            where: { status: 'ACTIVE' },
+            include: { student: { select: { id: true, name: true, classId: true } } },
           },
         },
-      },
-    });
+      })) ??
+      (await prisma.guardian.findFirst({
+        where: { email: dto.email },
+        include: {
+          studentGuardians: {
+            where: { status: 'ACTIVE' },
+            include: { student: { select: { id: true, name: true, classId: true } } },
+          },
+        },
+      }));
 
     if (!guardian) {
       throw { status: 404, code: 'GUARDIAN_NOT_FOUND', message: 'Responsável não encontrado' };
@@ -382,7 +398,10 @@ export class AuthService {
     if (!guardianId) throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
 
     const hash = await bcrypt.hash(password, 10);
-    await prisma.guardian.update({ where: { id: guardianId }, data: { passwordHash: hash } });
+    await prisma.guardian.update({
+      where: { id: guardianId },
+      data: { passwordHash: hash, activatedAt: new Date() },
+    });
     await redis.del(redisKeys.guardianFirstAccess(token));
 
     return { ok: true, message: 'Senha definida com sucesso. Faça login para continuar.' };

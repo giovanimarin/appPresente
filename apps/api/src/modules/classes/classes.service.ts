@@ -300,14 +300,18 @@ export class ClassesService {
     }
 
     const rel = dto.relationship?.trim() || 'responsavel';
+    // Staff linking by guardianId = direct authorization → ACTIVE immediately
+    // Linking by phone/CPF (invite flow) = PENDING_INVITE until guardian accepts
+    const linkStatus = dto.guardianId ? 'ACTIVE' : 'PENDING_INVITE';
     await prisma.studentGuardian.upsert({
       where: { studentId_guardianId: { studentId, guardianId: guardian.id } },
       update: {
-        status: 'PENDING_INVITE',
+        status: linkStatus,
         relationship: rel,
         kinshipDegree: dto.kinshipDegree ?? null,
         isLegalGuardian: dto.isLegalGuardian ?? false,
         isFinancialGuardian: dto.isFinancialGuardian ?? false,
+        ...(linkStatus === 'ACTIVE' ? { activatedAt: new Date() } : {}),
       },
       create: {
         studentId, guardianId: guardian.id, schoolId,
@@ -316,7 +320,8 @@ export class ClassesService {
         isLegalGuardian: dto.isLegalGuardian ?? false,
         isFinancialGuardian: dto.isFinancialGuardian ?? false,
         isPrimary: ['mae', 'mãe', 'pai'].includes(rel.toLowerCase()),
-        status: 'PENDING_INVITE',
+        status: linkStatus,
+        ...(linkStatus === 'ACTIVE' ? { activatedAt: new Date() } : {}),
       },
     });
 

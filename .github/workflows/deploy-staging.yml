@@ -54,3 +54,6 @@ jobs:
           curl -f https://staging-api.apppresente.com.br/health
 
       # Frontend: Vercel detecta push no branch staging e faz deploy automático
+
+  # Build mobile removido do deploy automático.
+  # Disparar manualmente via: Actions → Mobile — Build Manual

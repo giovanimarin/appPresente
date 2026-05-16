@@ -1,0 +1,67 @@
+name: Mobile — Build Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Perfil de build"
+        required: true
+        type: choice
+        options:
+          - preview       # APK interno para testes (staging)
+          - production    # AAB para Play Store
+          - development   # APK com dev-client para desenvolvimento
+        default: preview
+      platform:
+        description: "Plataforma"
+        required: true
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+        default: android
+      submit:
+        description: "Submeter para a loja após o build? (só production/android)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: "Build ${{ inputs.profile }} — ${{ inputs.platform }}"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.profile == 'production' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instala dependências do mobile
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Build EAS
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli build \
+            --profile ${{ inputs.profile }} \
+            --platform ${{ inputs.platform }} \
+            --non-interactive
+
+      - name: Submit para Play Store
+        if: inputs.submit == 'true' && inputs.profile == 'production' && (inputs.platform == 'android' || inputs.platform == 'all')
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli submit \
+            --profile production \
+            --platform android \
+            --non-interactive \
+            --latest

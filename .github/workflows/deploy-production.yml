@@ -81,3 +81,6 @@ jobs:
           generate_release_notes: true
 
       # Frontend: Vercel detecta push no branch main e faz deploy automático
+
+  # Build mobile removido do deploy automático.
+  # Disparar manualmente via: Actions → Mobile — Build Manual

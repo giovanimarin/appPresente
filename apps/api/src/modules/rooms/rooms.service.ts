@@ -6,14 +6,19 @@ export class RoomsService {
     return prisma.room.findMany({
       where: { schoolId, ...(includeInactive ? {} : { active: true }) },
       include: {
-        classes: {
-          where: { active: true },
+        classRooms: {
+          where: { class: { active: true } },
           select: {
-            id: true,
-            name: true,
-            grade: true,
             shift: true,
-            _count: { select: { students: true } },
+            label: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+                grade: true,
+                _count: { select: { students: true } },
+              },
+            },
           },
           orderBy: { shift: 'asc' },
         },
@@ -59,7 +64,7 @@ export class RoomsService {
 
   async deleteRoom(schoolId: string, id: string) {
     await this.getRoom(schoolId, id);
-    const inUse = await prisma.class.findFirst({ where: { roomId: id } });
+    const inUse = await prisma.classRoom.findFirst({ where: { roomId: id } });
     if (inUse) throw { status: 409, code: 'ROOM_IN_USE', message: 'Sala está associada a uma ou mais turmas' };
     await prisma.room.delete({ where: { id } });
     return { success: true };

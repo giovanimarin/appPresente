@@ -4,9 +4,13 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:staging": "EXPO_PUBLIC_API_URL=https://staging-api.apppresente.com.br/api/v1 expo start",
+    "start:local": "EXPO_PUBLIC_API_URL=http://localhost:3001/api/v1 expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "build:local:dev": "eas build --profile development --platform android --local",
+    "build:local:staging": "eas build --profile preview --platform android --local",
+    "build:local:prod": "eas build --profile production --platform android --local"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

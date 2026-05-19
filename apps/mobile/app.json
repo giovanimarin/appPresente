@@ -22,11 +22,17 @@
         "backgroundColor": "#ffffff"
       },
       "package": "br.com.apppresente.mobile",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "androidMode": "default"
+        }
+      ]
     ],
     "scheme": "presente",
     "experiments": {

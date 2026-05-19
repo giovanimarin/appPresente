@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1043991643168",
+    "project_id": "apppresente-77eeb",
+    "storage_bucket": "apppresente-77eeb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1043991643168:android:cb46ea2572061f585b6845",
+        "android_client_info": {
+          "package_name": "br.com.apppresente.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDcqCEWvJ-0W0eaPVcydX4SJSNhKpwlrqA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

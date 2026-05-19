@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import { api } from './api';
 
 // expo-notifications requer módulo nativo compilado no dev client.
@@ -41,10 +40,7 @@ export async function registerPushToken(): Promise<void> {
       });
     }
 
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-    if (!projectId) return;
-
-    const { data: pushToken } = await N.getExpoPushTokenAsync({ projectId });
+    const { data: pushToken } = await N.getDevicePushTokenAsync();
     await api.put('/guardians/me', { pushToken, deviceType: Platform.OS });
     console.log('[Push] Token registrado:', pushToken);
   } catch (err) {

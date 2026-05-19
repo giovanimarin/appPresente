@@ -36,9 +36,7 @@ export const env = {
   ZENVIA_API_KEY: optional('ZENVIA_API_KEY'),
   ZENVIA_SENDER: optional('ZENVIA_SENDER', 'Presente'),
 
-  FIREBASE_PROJECT_ID: optional('FIREBASE_PROJECT_ID'),
-  FIREBASE_PRIVATE_KEY: optional('FIREBASE_PRIVATE_KEY'),
-  FIREBASE_CLIENT_EMAIL: optional('FIREBASE_CLIENT_EMAIL'),
+  FIREBASE_SERVICE_ACCOUNT_JSON: optional('FIREBASE_SERVICE_ACCOUNT_JSON', '{}'),
 
   isDev: () => process.env.NODE_ENV !== 'production',
   isProd: () => process.env.NODE_ENV === 'production',

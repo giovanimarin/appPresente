@@ -1,10 +1,16 @@
 import { Worker, Job } from 'bullmq';
-import { Expo, ExpoPushMessage } from 'expo-server-sdk';
+import * as admin from 'firebase-admin';
 import { env } from '../../config/env';
 import { prisma } from '../../config/database';
 
 const connection = { url: env.REDIS_URL };
-const expo = new Expo();
+
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+}
+
+const messaging = admin.messaging();
 
 interface CommPushJobData {
   communicationId: string;
@@ -56,35 +62,27 @@ async function sendPushNotifications(
 ) {
   if (tokens.length === 0) return;
 
-  const validTokens = tokens.filter((t) => Expo.isExpoPushToken(t));
-  if (validTokens.length === 0) {
-    console.warn('[PushWorker] No valid Expo push tokens found');
-    return;
-  }
+  const results = await Promise.allSettled(
+    tokens.map((token) =>
+      messaging.send({
+        token,
+        notification: { title, body },
+        data,
+        android: { priority: 'high', notification: { sound: 'default' } },
+      }),
+    ),
+  );
 
-  const messages: ExpoPushMessage[] = validTokens.map((to) => ({
-    to,
-    sound: 'default',
-    title,
-    body,
-    data,
-  }));
+  const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+  const failed = results.filter((r) => r.status === 'rejected');
 
-  const chunks = expo.chunkPushNotifications(messages);
-  for (const chunk of chunks) {
-    try {
-      const receipts = await expo.sendPushNotificationsAsync(chunk);
-      for (const receipt of receipts) {
-        if (receipt.status === 'error') {
-          console.error('[PushWorker] Receipt error:', receipt.message, receipt.details);
-        }
-      }
-    } catch (err) {
-      console.error('[PushWorker] Chunk send error:', err);
+  failed.forEach((r) => {
+    if (r.status === 'rejected') {
+      console.error('[PushWorker] FCM error:', r.reason?.message ?? r.reason);
     }
-  }
+  });
 
-  console.log(`[PushWorker] Sent to ${validTokens.length} devices`);
+  console.log(`[PushWorker] Sent to ${succeeded}/${tokens.length} devices`);
 }
 
 export const pushWorker = new Worker<PushJobData>(

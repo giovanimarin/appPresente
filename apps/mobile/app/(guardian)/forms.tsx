@@ -3,7 +3,7 @@ import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpa
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText, ChevronDown, ChevronUp, Send } from 'lucide-react-native';
-import { api } from '../../lib/api';
+import { formsApi } from '../../lib/api';
 
 type Form = { id: string; title: string; description?: string; fields: FormField[] };
 type FormField = { id: string; label: string; type: string; required: boolean; options?: string[] };
@@ -25,16 +25,16 @@ export default function GuardianForms() {
 
   const { data: formsData, isLoading: formsLoading, refetch } = useQuery({
     queryKey: ['guardian-forms'],
-    queryFn: () => api.get('/forms', { params: { limit: 50 } }).then((r) => r.data),
+    queryFn: () => formsApi.guardianForms().then((r) => r.data),
   });
 
   const { data: subsData } = useQuery({
     queryKey: ['guardian-submissions'],
-    queryFn: () => api.get('/forms/my-submissions').then((r) => r.data),
+    queryFn: () => formsApi.mySubmissions().then((r) => r.data),
   });
 
-  const forms: Form[] = formsData?.data ?? [];
-  const submissions: Submission[] = subsData?.data ?? [];
+  const forms: Form[] = formsData ?? [];
+  const submissions: Submission[] = subsData ?? [];
 
   async function onRefresh() {
     setRefreshing(true);
@@ -50,7 +50,7 @@ export default function GuardianForms() {
     }
     setSubmitting(true);
     try {
-      await api.post(`/forms/${form.id}/submissions`, {
+      await formsApi.submit(form.id, {
         answers: form.fields.map((f) => ({ fieldId: f.id, value: answers[f.id] ?? '' })),
       });
       await qc.invalidateQueries({ queryKey: ['guardian-submissions'] });

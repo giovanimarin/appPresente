@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { getAccessToken, clearTokens } from './storage';
+import { router } from 'expo-router';
+import { getAccessToken, getRefreshToken, getUser, setTokens, clearTokens } from './storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://staging-api.apppresente.com.br/api/v1';
 
@@ -11,13 +12,51 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+let isRefreshing = false;
+let refreshQueue: Array<(token: string) => void> = [];
+
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
-    if (err.response?.status === 401) {
-      await clearTokens();
+    const original = err.config;
+    if (err.response?.status !== 401 || original._retry) {
+      return Promise.reject(err);
     }
-    return Promise.reject(err);
+
+    original._retry = true;
+
+    if (isRefreshing) {
+      return new Promise((resolve) => {
+        refreshQueue.push((token) => {
+          original.headers.Authorization = `Bearer ${token}`;
+          resolve(api(original));
+        });
+      });
+    }
+
+    isRefreshing = true;
+    try {
+      const [refreshToken, user] = await Promise.all([getRefreshToken(), getUser()]);
+      if (!refreshToken || !user) throw new Error('no_tokens');
+
+      const { data } = await axios.post(`${API_URL}/auth/refresh`, {
+        userId: user.id,
+        refreshToken,
+      });
+
+      await setTokens(data.accessToken, data.refreshToken);
+      refreshQueue.forEach((cb) => cb(data.accessToken));
+      refreshQueue = [];
+
+      original.headers.Authorization = `Bearer ${data.accessToken}`;
+      return api(original);
+    } catch {
+      await clearTokens();
+      router.replace('/login-selector');
+      return Promise.reject(err);
+    } finally {
+      isRefreshing = false;
+    }
   },
 );
 
@@ -41,6 +80,7 @@ export const authApi = {
 
 // Communications
 export const communicationsApi = {
+  // Staff
   list: (params?: Record<string, unknown>) =>
     api.get('/communications', { params }),
   get: (id: string) =>
@@ -49,6 +89,11 @@ export const communicationsApi = {
     api.post('/communications', data),
   send: (id: string) =>
     api.post(`/communications/${id}/send`),
+  // Guardian
+  guardianFeed: (params?: Record<string, unknown>) =>
+    api.get('/communications/guardian/feed', { params }),
+  confirmRead: (id: string, data: Record<string, unknown>) =>
+    api.post(`/communications/${id}/read`, data),
 };
 
 // Classes
@@ -69,12 +114,26 @@ export const studentsApi = {
 
 // Agenda
 export const agendaApi = {
+  // Staff
   list: (params?: Record<string, unknown>) =>
     api.get('/agenda', { params }),
   get: (id: string) =>
     api.get(`/agenda/${id}`),
   create: (data: Record<string, unknown>) =>
     api.post('/agenda', data),
+  // Guardian
+  guardianFeed: (params?: Record<string, unknown>) =>
+    api.get('/agenda/guardian/feed', { params }),
+};
+
+// Forms (Guardian)
+export const formsApi = {
+  guardianForms: () =>
+    api.get('/forms/guardian/available'),
+  mySubmissions: () =>
+    api.get('/forms/guardian/submissions'),
+  submit: (id: string, data: Record<string, unknown>) =>
+    api.post(`/forms/guardian/${id}/submit`, data),
 };
 
 // Appointments
@@ -88,4 +147,6 @@ export const appointmentsApi = {
 // Guardian (self)
 export const guardianApi = {
   me: () => api.get('/guardians/me'),
+  updateMe: (data: Record<string, unknown>) => api.put('/guardians/me', data),
+  mySchools: () => api.get('/guardians/my-schools'),
 };

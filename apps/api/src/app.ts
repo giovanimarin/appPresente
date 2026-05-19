@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { prisma } from './config/database';
 import { redis } from './config/redis';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
+import './jobs/workers';
 
 // Routes
 import authRoutes from './modules/auth/auth.routes';

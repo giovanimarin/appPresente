@@ -235,23 +235,24 @@ export class AuthService {
       throw { status: 401, code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token inválido' };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: dto.userId, active: true },
-    });
-
-    if (!user) {
-      throw { status: 401, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
+    // Tenta staff primeiro, depois guardian
+    const user = await prisma.user.findUnique({ where: { id: dto.userId, active: true } });
+    if (user) {
+      const newAccessToken = generateAccessToken({ sub: user.id, school_id: user.schoolId, role: user.role });
+      const newRefreshToken = generateRefreshToken();
+      await storeRefreshToken(user.id, newRefreshToken);
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     }
 
-    const newAccessToken = generateAccessToken({
-      sub: user.id,
-      school_id: user.schoolId,
-      role: user.role,
-    });
-    const newRefreshToken = generateRefreshToken();
-    await storeRefreshToken(user.id, newRefreshToken);
+    const guardian = await prisma.guardian.findUnique({ where: { id: dto.userId, active: true } });
+    if (guardian) {
+      const newAccessToken = generateAccessToken({ sub: guardian.id, school_id: guardian.schoolId, role: 'GUARDIAN' });
+      const newRefreshToken = generateRefreshToken();
+      await storeRefreshToken(guardian.id, newRefreshToken);
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    }
 
-    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    throw { status: 401, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────

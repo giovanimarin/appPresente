@@ -18,6 +18,10 @@ export async function getAccessToken(): Promise<string | null> {
   return AsyncStorage.getItem(KEYS.accessToken);
 }
 
+export async function getRefreshToken(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.refreshToken);
+}
+
 export async function setTokens(accessToken: string, refreshToken: string) {
   await Promise.all([
     AsyncStorage.setItem(KEYS.accessToken, accessToken),

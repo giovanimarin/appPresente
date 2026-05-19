@@ -23,7 +23,6 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function GuardianCommunications() {
-  const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({

@@ -92,6 +92,8 @@ export const communicationsApi = {
   // Guardian
   guardianFeed: (params?: Record<string, unknown>) =>
     api.get('/communications/guardian/feed', { params }),
+  trackViewed: (id: string, data: Record<string, unknown>) =>
+    api.post(`/communications/${id}/viewed`, data),
   confirmRead: (id: string, data: Record<string, unknown>) =>
     api.post(`/communications/${id}/read`, data),
 };

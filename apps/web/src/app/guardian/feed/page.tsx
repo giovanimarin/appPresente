@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { communicationsApi, guardiansApi } from '@/lib/api';
 import { isAuthenticated, getUser } from '@/lib/auth';
 import { formatDateTime, commTypeLabel, cn } from '@/lib/utils';
-import { CheckCircle2, Loader2, Bell, Palette, ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
+import { CheckCircle2, Loader2, Bell, Palette, ChevronDown, ChevronUp, Paperclip, Eye } from 'lucide-react';
 
 const COLOR_PALETTE = [
   '#6366f1', '#10b981', '#0ea5e9', '#8b5cf6',
@@ -28,6 +28,7 @@ type FeedItem = {
   schoolType: string;
   schoolId: string;
   school: { id: string; name: string };
+  isViewed: boolean;
   isRead: boolean;
   sentAt: string;
   requiresConfirmation: boolean;
@@ -65,11 +66,24 @@ export default function GuardianFeedPage() {
     enabled: !!user,
   });
 
+  const viewedMutation = useMutation({
+    mutationFn: (id: string) => communicationsApi.trackViewed(id, { deviceType: 'WEB' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['guardian-feed'] }),
+  });
+
   const readMutation = useMutation({
     mutationFn: ({ id, studentId }: { id: string; studentId: string }) =>
       communicationsApi.confirmRead(id, { studentId, deviceType: 'WEB' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['guardian-feed'] }),
   });
+
+  function handleExpand(id: string, item: FeedItem) {
+    const newExpanded = expandedId === id ? null : id;
+    setExpandedId(newExpanded);
+    if (newExpanded && !item.isViewed) {
+      viewedMutation.mutate(id);
+    }
+  }
 
   const colorMutation = useMutation({
     mutationFn: ({ schoolId, color }: { schoolId: string; color: string }) =>
@@ -80,8 +94,8 @@ export default function GuardianFeedPage() {
     },
   });
 
-  const unreadCount = feed.filter((c) => !c.isRead).length;
-  const visibleFeed = unreadOnly ? feed.filter((c) => !c.isRead) : feed;
+  const unreadCount = feed.filter((c) => !c.isViewed).length;
+  const visibleFeed = unreadOnly ? feed.filter((c) => !c.isViewed) : feed;
 
   const bgStyle = activeSchoolId
     ? { background: `linear-gradient(160deg, ${accentColor}18 0%, #f9fafb 50%)` }
@@ -280,7 +294,7 @@ export default function GuardianFeedPage() {
                 key={comm.id}
                 className={cn(
                   'bg-white rounded-xl border-l-4 transition-all duration-200 overflow-hidden',
-                  comm.isRead ? 'opacity-80' : 'shadow-md',
+                  comm.isViewed ? 'opacity-80' : 'shadow-md',
                   isExpanded && 'shadow-lg',
                 )}
                 style={{ borderLeftColor: color }}
@@ -288,7 +302,7 @@ export default function GuardianFeedPage() {
                 {/* Cabeçalho clicável */}
                 <button
                   className="w-full text-left p-4 focus:outline-none"
-                  onClick={() => setExpandedId(isExpanded ? null : comm.id)}
+                  onClick={() => handleExpand(comm.id, comm)}
                 >
                   <div className="flex items-start gap-2 mb-1.5">
                     {!activeSchoolId && commSchool && (
@@ -301,20 +315,17 @@ export default function GuardianFeedPage() {
                     )}
                     <span className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</span>
                     <div className="ml-auto flex items-center gap-2">
-                      {!comm.isRead && (
+                      {!comm.isViewed && (
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                       )}
+                      {comm.isRead && <CheckCircle2 size={12} className="text-green-500 flex-shrink-0" />}
                       {isExpanded
                         ? <ChevronUp size={14} className="text-gray-300 flex-shrink-0" />
                         : <ChevronDown size={14} className="text-gray-300 flex-shrink-0" />
                       }
                     </div>
                   </div>
-
                   <h3 className="font-semibold text-gray-900 text-sm leading-snug">{comm.title}</h3>
-                  {!isExpanded && (
-                    <p className="text-gray-500 text-xs mt-0.5 line-clamp-1">{comm.body}</p>
-                  )}
                 </button>
 
                 {/* Detalhes expandidos */}
@@ -331,25 +342,31 @@ export default function GuardianFeedPage() {
 
                     <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                       <span className="text-xs text-gray-400">{formatDateTime(comm.sentAt)}</span>
-                      {comm.requiresConfirmation && !comm.isRead ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const studentId =
-                              comm.commStudents?.[0]?.studentId ??
-                              schools.find((s) => s.school.id === comm.schoolId)?.students?.[0]?.id;
-                            if (studentId) readMutation.mutate({ id: comm.id, studentId });
-                          }}
-                          disabled={readMutation.isPending}
-                          className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg text-white"
-                          style={{ backgroundColor: color }}
-                        >
-                          <CheckCircle2 size={12} />
-                          Confirmar leitura
-                        </button>
-                      ) : comm.isRead ? (
+                      {comm.requiresConfirmation ? (
+                        comm.isRead ? (
+                          <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                            <CheckCircle2 size={12} /> Leitura confirmada
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const studentId =
+                                comm.commStudents?.[0]?.studentId ??
+                                schools.find((s) => s.school.id === comm.schoolId)?.students?.[0]?.id;
+                              if (studentId) readMutation.mutate({ id: comm.id, studentId });
+                            }}
+                            disabled={readMutation.isPending}
+                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg text-white"
+                            style={{ backgroundColor: color }}
+                          >
+                            <CheckCircle2 size={12} />
+                            Confirmar leitura
+                          </button>
+                        )
+                      ) : comm.isViewed ? (
                         <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <CheckCircle2 size={11} className="text-green-500" /> Lido
+                          <Eye size={11} /> Visualizado
                         </span>
                       ) : null}
                     </div>
@@ -358,29 +375,8 @@ export default function GuardianFeedPage() {
 
                 {/* Rodapé quando fechado */}
                 {!isExpanded && (
-                  <div className="px-4 pb-3 flex items-center justify-between">
+                  <div className="px-4 pb-3">
                     <span className="text-xs text-gray-400">{formatDateTime(comm.sentAt)}</span>
-                    {comm.requiresConfirmation && !comm.isRead ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const studentId =
-                            comm.commStudents?.[0]?.studentId ??
-                            schools.find((s) => s.school.id === comm.schoolId)?.students?.[0]?.id;
-                          if (studentId) readMutation.mutate({ id: comm.id, studentId });
-                        }}
-                        disabled={readMutation.isPending}
-                        className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg text-white"
-                        style={{ backgroundColor: color }}
-                      >
-                        <CheckCircle2 size={12} />
-                        Confirmar leitura
-                      </button>
-                    ) : comm.isRead ? (
-                      <span className="flex items-center gap-1 text-xs text-gray-400">
-                        <CheckCircle2 size={11} className="text-green-500" /> Lido
-                      </span>
-                    ) : null}
                   </div>
                 )}
               </div>

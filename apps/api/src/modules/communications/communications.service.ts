@@ -391,11 +391,17 @@ export class CommunicationsService {
       ],
     });
 
-    return communications.map((c) => ({
-      ...c,
-      isRead: c.reads.length > 0,
-      readAt: c.reads[0]?.readAt ?? null,
-    }));
+    return communications.map((c) => {
+      const read = c.reads[0] ?? null;
+      return {
+        ...c,
+        isViewed: read?.viewedAt != null,
+        viewedAt: read?.viewedAt ?? null,
+        isRead: read?.readAt != null,
+        readAt: read?.readAt ?? null,
+        studentId: c.commStudents[0]?.studentId ?? null,
+      };
+    });
   }
 
   // ── Guardian: Confirmar leitura (imutável) ────────────────────────────────
@@ -432,17 +438,27 @@ export class CommunicationsService {
     return { ok: true };
   }
 
-  async trackViewed(guardianId: string, commId: string, studentId: string, deviceType: string, ipAddress?: string) {
+  async trackViewed(guardianId: string, commId: string, studentId: string | undefined, deviceType: string, ipAddress?: string) {
     const comm = await prisma.communication.findFirst({ where: { id: commId, schoolStatus: 'SENT' } });
     if (!comm) throw { status: 404, code: 'COMM_NOT_FOUND', message: 'Comunicado não encontrado' };
-    await this._upsertTrackingEvent(commId, guardianId, studentId, 'viewedAt', deviceType, ipAddress);
+    const resolvedStudentId = studentId ?? await this._resolveStudentId(guardianId, commId);
+    if (!resolvedStudentId) return { ok: true };
+    await this._upsertTrackingEvent(commId, guardianId, resolvedStudentId, 'viewedAt', deviceType, ipAddress);
     return { ok: true };
+  }
+
+  private async _resolveStudentId(guardianId: string, commId: string): Promise<string | null> {
+    const link = await prisma.studentGuardian.findFirst({
+      where: { guardianId, status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
+      select: { studentId: true },
+    });
+    return link?.studentId ?? null;
   }
 
   async confirmRead(
     guardianId: string,
     commId: string,
-    studentId: string,
+    studentId: string | undefined,
     deviceType: string,
     ipAddress: string,
   ) {
@@ -451,21 +467,15 @@ export class CommunicationsService {
     });
     if (!comm) throw { status: 404, code: 'COMM_NOT_FOUND', message: 'Comunicado não encontrado' };
 
-    if (!comm.requiresConfirmation) {
-      throw { status: 400, code: 'NO_CONFIRMATION_REQUIRED', message: 'Comunicado não requer confirmação' };
-    }
-
-    const link = await prisma.studentGuardian.findFirst({
-      where: { guardianId, studentId, status: { in: ['ACTIVE', 'PENDING_INVITE'] }, student: { schoolId: comm.schoolId } },
-    });
-    if (!link) throw { status: 403, code: 'FORBIDDEN', message: 'Sem acesso a este comunicado' };
+    const resolvedStudentId = studentId ?? await this._resolveStudentId(guardianId, commId);
+    if (!resolvedStudentId) throw { status: 403, code: 'FORBIDDEN', message: 'Sem acesso a este comunicado' };
 
     const existing = await prisma.communicationRead.findUnique({
       where: { communicationId_guardianId: { communicationId: commId, guardianId } },
     });
-    if (existing?.readAt) throw { status: 409, code: 'ALREADY_READ', message: 'Comunicado já confirmado' };
+    if (existing?.readAt) return { ok: true };
 
-    await this._upsertTrackingEvent(commId, guardianId, studentId, 'readAt', deviceType, ipAddress);
+    await this._upsertTrackingEvent(commId, guardianId, resolvedStudentId, 'readAt', deviceType, ipAddress);
     return { ok: true };
   }
 

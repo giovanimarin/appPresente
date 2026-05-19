@@ -38,7 +38,7 @@ function GuardianTabs() {
     responseListener.current = addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, string>;
       if (data?.type === 'COMMUNICATION' && data?.communicationId) {
-        router.push(`/communications/${data.communicationId}` as never);
+        router.push(`/(guardian)/communications/${data.communicationId}` as never);
       }
     });
 

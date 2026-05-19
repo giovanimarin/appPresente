@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MessageSquare, Clock, CheckCircle } from 'lucide-react-native';
+import { MessageSquare, Clock, CheckCircle, ChevronRight } from 'lucide-react-native';
 import { communicationsApi } from '../../lib/api';
 
 type FeedItem = {
   id: string;
   title: string;
-  body: string;
   schoolType: string;
   sentAt: string;
+  isViewed: boolean;
   isRead: boolean;
-  readAt?: string | null;
+  requiresConfirmation: boolean;
   school: { name: string };
 };
 
@@ -31,11 +32,6 @@ export default function GuardianCommunications() {
   });
 
   const items: FeedItem[] = data ?? [];
-
-  const readMut = useMutation({
-    mutationFn: (id: string) => communicationsApi.confirmRead(id, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['guardian-communications'] }),
-  });
 
   async function onRefresh() {
     setRefreshing(true);
@@ -68,13 +64,13 @@ export default function GuardianCommunications() {
               {items.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  onPress={() => { if (!item.isRead) readMut.mutate(item.id); }}
+                  onPress={() => router.push(`/(guardian)/communications/${item.id}` as never)}
                   activeOpacity={0.85}
-                  className={`bg-white rounded-2xl p-4 border ${!item.isRead ? 'border-primary-200' : 'border-gray-100'}`}
+                  className={`bg-white rounded-2xl p-4 border ${!item.isViewed ? 'border-primary-200' : 'border-gray-100'}`}
                 >
                   <View className="flex-row items-start justify-between gap-2 mb-1.5">
                     <View className="flex-row items-center gap-1.5 flex-1 flex-wrap">
-                      {!item.isRead && (
+                      {!item.isViewed && (
                         <View className="w-2 h-2 bg-primary-600 rounded-full" />
                       )}
                       <Text className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
@@ -82,12 +78,12 @@ export default function GuardianCommunications() {
                       </Text>
                       <Text className="text-xs text-gray-400">{item.school?.name}</Text>
                     </View>
-                    {item.isRead && <CheckCircle size={14} color="#10b981" />}
+                    <View className="flex-row items-center gap-1">
+                      {item.isRead && <CheckCircle size={14} color="#10b981" />}
+                      <ChevronRight size={14} color="#9ca3af" />
+                    </View>
                   </View>
                   <Text className="font-semibold text-gray-900 text-sm">{item.title}</Text>
-                  {item.body ? (
-                    <Text className="text-xs text-gray-500 mt-1" numberOfLines={3}>{item.body}</Text>
-                  ) : null}
                   <View className="flex-row items-center gap-1 mt-2">
                     <Clock size={11} color="#9ca3af" />
                     <Text className="text-xs text-gray-400">

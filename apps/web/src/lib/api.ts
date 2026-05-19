@@ -146,6 +146,7 @@ export const communicationsApi = {
   readReport: (id: string) => api.get(`/communications/${id}/read-report`),
   guardianFeed: (schoolId?: string) =>
     api.get('/communications/guardian/feed', { params: schoolId ? { schoolId } : undefined }),
+  trackViewed: (id: string, data: unknown) => api.post(`/communications/${id}/viewed`, data),
   confirmRead: (id: string, data: unknown) => api.post(`/communications/${id}/read`, data),
   createGuardianRequest: (data: unknown) => api.post('/communications/guardian', data),
   myRequests: () => api.get('/communications/guardian/my-requests'),

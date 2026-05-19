@@ -309,8 +309,8 @@ export default function CommunicationDetailPage() {
           {[
             { label: 'Enviados', value: stats.total, icon: <Send size={16} className="text-gray-400" />, border: 'border-gray-200' },
             { label: 'Recebidos', value: stats.receivedCount, icon: <Users size={16} className="text-blue-400" />, border: 'border-blue-200' },
-            { label: 'Lidos', value: stats.viewedCount, icon: <Clock size={16} className="text-indigo-400" />, border: 'border-indigo-200' },
-            { label: 'Confirmados', value: stats.confirmedCount, icon: <CheckCircle2 size={16} className="text-green-500" />, border: 'border-green-200' },
+            { label: 'Visualizaram', value: stats.viewedCount, icon: <Clock size={16} className="text-indigo-400" />, border: 'border-indigo-200' },
+            { label: 'Confirmaram', value: stats.confirmedCount, icon: <CheckCircle2 size={16} className="text-green-500" />, border: 'border-green-200' },
           ].map((s) => (
             <div key={s.label} className={cn('bg-white rounded-xl border p-4 text-center', s.border)}>
               <div className="flex justify-center mb-1">{s.icon}</div>

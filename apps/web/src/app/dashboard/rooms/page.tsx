@@ -8,11 +8,9 @@ import { Loader2, Search, Plus, X, DoorOpen, ChevronDown, ChevronUp, Users } fro
 import ActionMenu from '@/components/ActionMenu';
 
 type RoomClass = {
-  id: string;
-  name: string;
-  grade: string;
   shift: string;
-  _count: { students: number };
+  label: string | null;
+  class: { id: string; name: string; grade: string; _count: { students: number } };
 };
 
 type Room = {
@@ -20,7 +18,7 @@ type Room = {
   name: string;
   capacity?: number | null;
   active: boolean;
-  classes: RoomClass[];
+  classRooms: RoomClass[];
 };
 
 const SHIFT_LABELS: Record<string, string> = {
@@ -47,7 +45,7 @@ function shiftColor(shift: string) {
 }
 
 function OccupancyBar({ classes, capacity }: { classes: RoomClass[]; capacity?: number | null }) {
-  const total = classes.reduce((sum, c) => sum + c._count.students, 0);
+  const total = classes.reduce((sum, c) => sum + c.class._count.students, 0);
 
   if (classes.length === 0) {
     return <span className="text-xs text-gray-400">Sem turmas</span>;
@@ -296,7 +294,7 @@ export default function RoomsPage() {
                     >
                       {/* Expand chevron */}
                       <td className="px-4 py-3 text-gray-400">
-                        {room.classes.length > 0
+                        {room.classRooms.length > 0
                           ? expandedId === room.id
                             ? <ChevronUp size={14} />
                             : <ChevronDown size={14} />
@@ -314,10 +312,10 @@ export default function RoomsPage() {
                       {/* Turnos ocupados */}
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {room.classes.length === 0 ? (
+                          {room.classRooms.length === 0 ? (
                             <span className="text-xs text-gray-400">Livre</span>
                           ) : (
-                            [...new Set(room.classes.map((c) => c.shift))].map((shift) => (
+                            [...new Set(room.classRooms.map((c) => c.shift))].map((shift) => (
                               <span key={shift} className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${shiftColor(shift)}`}>
                                 {shiftLabel(shift)}
                               </span>
@@ -328,7 +326,7 @@ export default function RoomsPage() {
 
                       {/* Barra de ocupação */}
                       <td className="px-4 py-3">
-                        <OccupancyBar classes={room.classes} capacity={room.capacity} />
+                        <OccupancyBar classes={room.classRooms} capacity={room.capacity} />
                       </td>
 
                       {/* Status */}
@@ -352,21 +350,21 @@ export default function RoomsPage() {
                     </tr>
 
                     {/* Detalhe expandido — turmas */}
-                    {expandedId === room.id && room.classes.length > 0 && (
+                    {expandedId === room.id && room.classRooms.length > 0 && (
                       <tr key={`${room.id}-detail`} className="bg-gray-50">
                         <td colSpan={isAdmin ? 6 : 5} className="px-8 pb-4 pt-0">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Turmas nesta sala</p>
                           <div className="flex flex-col gap-1.5">
-                            {room.classes.map((cls) => (
-                              <div key={cls.id} className="flex items-center gap-3 text-sm">
-                                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${shiftColor(cls.shift)}`}>
-                                  {shiftLabel(cls.shift)}
+                            {room.classRooms.map((cr) => (
+                              <div key={cr.class.id} className="flex items-center gap-3 text-sm">
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${shiftColor(cr.shift)}`}>
+                                  {shiftLabel(cr.shift)}
                                 </span>
-                                <span className="font-medium text-gray-800">{cls.name}</span>
-                                {cls.grade && <span className="text-gray-500">{cls.grade}</span>}
+                                <span className="font-medium text-gray-800">{cr.class.name}</span>
+                                {cr.class.grade && <span className="text-gray-500">{cr.class.grade}</span>}
                                 <span className="text-gray-400 flex items-center gap-1">
                                   <Users size={12} />
-                                  {cls._count.students} aluno{cls._count.students !== 1 ? 's' : ''}
+                                  {cr.class._count.students} aluno{cr.class._count.students !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             ))}

@@ -275,6 +275,9 @@ export class CommunicationsService {
           },
           orderBy: { readAt: 'asc' },
         },
+        deliveryLogs: {
+          select: { guardianId: true, sentAt: true },
+        },
       },
     });
 
@@ -282,6 +285,14 @@ export class CommunicationsService {
 
     // Build read map: guardianId → readRecord (unique per guardian per communication)
     const readMap = new Map(comm.reads.map((r) => [r.guardianId, r]));
+
+    // Build delivery map: guardianId → sentAt (only guardians who actually received the push/email)
+    const deliveryMap = new Map<string, Date>();
+    for (const log of comm.deliveryLogs) {
+      if (!deliveryMap.has(log.guardianId)) {
+        deliveryMap.set(log.guardianId, log.sentAt);
+      }
+    }
 
     const seen = new Set<string>();
     const allRecipients: Array<{
@@ -298,13 +309,15 @@ export class CommunicationsService {
         if (seen.has(key)) continue;
         seen.add(key);
         const rec = readMap.get(sg.guardianId);
+        // sentAt = quando o push/email foi de fato enviado para esse guardian; null = não foi enviado
+        const sentAt = deliveryMap.get(sg.guardianId) ?? null;
         allRecipients.push({
           guardianId: sg.guardianId,
           guardianName: sg.guardian.name || sg.guardian.phone || '',
           guardianPhone: sg.guardian.phone ?? '',
           studentId: student.id,
           studentName: student.name,
-          sentAt: comm.sentAt,
+          sentAt,
           receivedAt: rec?.receivedAt ?? null,
           viewedAt: rec?.viewedAt ?? null,
           readAt: rec?.readAt ?? null,
@@ -321,7 +334,7 @@ export class CommunicationsService {
       for (const cs of comm.commStudents) addStudentGuardians(cs.student);
     }
 
-    const total = allRecipients.length;
+    const total = allRecipients.filter((r) => r.sentAt).length;
     const confirmedCount = allRecipients.filter((r) => r.readAt).length;
     const viewedCount = allRecipients.filter((r) => r.viewedAt).length;
     const receivedCount = allRecipients.filter((r) => r.receivedAt).length;

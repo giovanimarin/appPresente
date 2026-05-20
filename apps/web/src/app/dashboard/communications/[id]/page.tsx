@@ -361,12 +361,14 @@ export default function CommunicationDetailPage() {
                       <p className="font-medium text-gray-900 text-sm truncate max-w-[200px]">{r.guardianName}</p>
                       <p className="text-xs text-gray-400">{r.studentName} · {r.guardianPhone}</p>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <CheckCircle2 size={16} className="text-green-500" />
-                        <span className="text-xs text-gray-400 whitespace-nowrap">{fmt(r.sentAt)}</span>
-                      </div>
-                    </td>
+                    {r.sentAt ? (
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <CheckCircle2 size={16} className="text-green-500" />
+                          <span className="text-xs text-gray-400 whitespace-nowrap">{fmt(r.sentAt)}</span>
+                        </div>
+                      </td>
+                    ) : <StageCell at={null} />}
                     <StageCell at={r.receivedAt} />
                     {r.viewedAt ? (
                       <td className="px-4 py-3 text-center">

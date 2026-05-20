@@ -256,13 +256,26 @@ export class GuardiansService {
     const cpf = dto.cpf?.replace(/\D/g, '') || undefined;
     if (!cpf) throw { status: 400, code: 'CPF_REQUIRED', message: 'CPF é obrigatório' };
 
-    const existingCpf = await prisma.guardian.findFirst({ where: { cpf } });
-    if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF' };
+    // CPF duplicado apenas na mesma escola — mesma pessoa pode ser responsável em escolas diferentes
+    const existingCpfSameSchool = await prisma.guardian.findFirst({ where: { cpf, schoolId } });
+    if (existingCpfSameSchool) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF nesta escola' };
 
     const email = dto.email?.trim().toLowerCase() || undefined;
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw { status: 400, code: 'INVALID_EMAIL', message: 'E-mail inválido' };
     }
+
+    // Verifica se já é responsável ativo em outra escola (mesmo CPF ou e-mail)
+    const existingActivated = await prisma.guardian.findFirst({
+      where: {
+        schoolId: { not: schoolId },
+        activatedAt: { not: null },
+        OR: [
+          ...(cpf ? [{ cpf }] : []),
+          ...(email ? [{ email }] : []),
+        ],
+      },
+    });
 
     const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
 
@@ -274,10 +287,12 @@ export class GuardiansService {
         email,
         cpf,
         active: true,
+        // Já ativo em outra escola: herda o status imediatamente
+        ...(existingActivated ? { activatedAt: new Date() } : {}),
       },
     });
 
-    if (email) {
+    if (email && !existingActivated) {
       const token = randomBytes(32).toString('hex');
       await redis.set(redisKeys.guardianFirstAccess(token), guardian.id, 'EX', 60 * 60 * 72);
       const webUrl = process.env.WEB_URL ?? 'https://app.apppresente.com.br';

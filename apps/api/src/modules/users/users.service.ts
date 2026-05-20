@@ -74,14 +74,33 @@ export class UsersService {
   }
 
   async update(schoolId: string, userId: string, dto: UpdateUserDto) {
-    const user = await prisma.user.findFirst({ where: { id: userId, schoolId } });
+    const user = await prisma.user.findFirst({
+      where: { id: userId, schoolId },
+      include: { school: { select: { name: true } } },
+    });
     if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
 
     const { password, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
     if (password) data.passwordHash = await bcrypt.hash(password, 12);
 
-    return prisma.user.update({ where: { id: userId }, data, select: USER_SELECT });
+    const updated = await prisma.user.update({ where: { id: userId }, data, select: USER_SELECT });
+
+    // Reenviar e-mail de primeiro acesso se o e-mail mudou e o usuário nunca logou
+    const emailChanged = dto.email && dto.email !== user.email;
+    if (emailChanged && !user.lastLoginAt) {
+      const token = randomUUID();
+      await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
+      const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+      const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+      try {
+        await sendWelcomeEmail(dto.email, user.name, user.school.name, firstAccessUrl);
+      } catch (e) {
+        console.error('[users] Falha ao reenviar e-mail de boas-vindas:', e);
+      }
+    }
+
+    return updated;
   }
 
   async setActive(schoolId: string, userId: string, requesterId: string, active: boolean) {

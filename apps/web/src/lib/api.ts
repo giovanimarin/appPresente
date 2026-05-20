@@ -18,7 +18,8 @@ if (typeof window !== 'undefined') {
     (response) => response,
     async (error) => {
       const original = error.config;
-      if (error.response?.status === 401 && !original._retry) {
+      const isAuthEndpoint = original?.url?.includes('/auth/');
+      if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
         original._retry = true;
         const refreshToken = localStorage.getItem('refreshToken');
         const storedUser = localStorage.getItem('user');

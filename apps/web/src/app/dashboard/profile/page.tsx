@@ -8,14 +8,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { authApi } from '@/lib/api';
 import { getUser, setUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
-import { Save, Eye, EyeOff, CheckCircle2, Loader2, Check, X } from 'lucide-react';
-
-const PASSWORD_RULES = [
-  { label: 'Mínimo 8 caracteres', test: (v: string) => v.length >= 8 },
-  { label: '1 letra maiúscula', test: (v: string) => /[A-Z]/.test(v) },
-  { label: '1 número', test: (v: string) => /[0-9]/.test(v) },
-  { label: '1 caractere especial', test: (v: string) => /[^A-Za-z0-9]/.test(v) },
-];
+import { Save, Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react';
+import { PasswordStrength, passwordFieldSchema } from '@/components/PasswordStrength';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres').max(200),
@@ -25,11 +19,7 @@ const profileSchema = z.object({
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Informe sua senha atual'),
-  newPassword: z.string()
-    .min(8, 'Mínimo 8 caracteres')
-    .regex(/[A-Z]/, 'Precisa de 1 letra maiúscula')
-    .regex(/[0-9]/, 'Precisa de 1 número')
-    .regex(/[^A-Za-z0-9]/, 'Precisa de 1 caractere especial'),
+  newPassword: passwordFieldSchema,
   confirmPassword: z.string().min(1, 'Confirme a nova senha'),
 }).refine((d) => d.newPassword === d.confirmPassword, {
   message: 'As senhas não coincidem',
@@ -53,22 +43,6 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   );
 }
 
-function PasswordStrength({ value }: { value: string }) {
-  if (!value) return null;
-  return (
-    <ul className="mt-2 space-y-1">
-      {PASSWORD_RULES.map((rule) => {
-        const ok = rule.test(value);
-        return (
-          <li key={rule.label} className={cn('flex items-center gap-1.5 text-xs', ok ? 'text-green-600' : 'text-gray-400')}>
-            {ok ? <Check size={12} /> : <X size={12} />}
-            {rule.label}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 export default function ProfilePage() {
   const localUser = getUser();

@@ -8,13 +8,10 @@ import { z } from 'zod';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { passwordFieldSchema, PasswordStrength } from '@/components/PasswordStrength';
 
 const schema = z.object({
-  password: z
-    .string()
-    .min(8, 'Senha deve ter ao menos 8 caracteres')
-    .regex(/[A-Z]/, 'Deve conter ao menos uma letra maiúscula')
-    .regex(/[0-9]/, 'Deve conter ao menos um número'),
+  password: passwordFieldSchema,
   confirmPassword: z.string().min(1, 'Confirme sua senha'),
 }).refine((d) => d.password === d.confirmPassword, {
   message: 'As senhas não conferem',
@@ -36,9 +33,10 @@ function PrimeiroAcessoContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+  const pwValue = watch('password', '');
 
   useEffect(() => {
     if (!token) {
@@ -115,6 +113,7 @@ function PrimeiroAcessoContent() {
                     </button>
                   </div>
                   {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
+                  <PasswordStrength value={pwValue} />
                 </div>
 
                 <div>
@@ -142,7 +141,6 @@ function PrimeiroAcessoContent() {
                   {errors.confirmPassword && <p className="mt-1 text-xs text-red-600">{errors.confirmPassword.message}</p>}
                 </div>
 
-                <p className="text-xs text-gray-400">Mínimo 8 caracteres, uma letra maiúscula e um número.</p>
 
                 {submitError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg">

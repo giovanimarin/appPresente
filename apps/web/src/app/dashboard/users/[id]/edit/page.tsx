@@ -8,15 +8,9 @@ import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/lib/api';
 import PhoneInput from '@/components/PhoneInput';
-import { ArrowLeft, Eye, EyeOff, Loader2, Lock, Check, X } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const PASSWORD_RULES = [
-  { label: 'Mínimo 8 caracteres', test: (v: string) => v.length >= 8 },
-  { label: '1 letra maiúscula', test: (v: string) => /[A-Z]/.test(v) },
-  { label: '1 número', test: (v: string) => /[0-9]/.test(v) },
-  { label: '1 caractere especial', test: (v: string) => /[^A-Za-z0-9]/.test(v) },
-];
+import { PasswordStrength, passwordFieldSchema } from '@/components/PasswordStrength';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
@@ -25,10 +19,7 @@ const schema = z.object({
   phone: z.string().optional(),
   cpf: z.string().optional(),
   active: z.boolean().optional(),
-  password: z.string().refine(
-    (v) => v === '' || (v.length >= 8 && /[A-Z]/.test(v) && /[0-9]/.test(v) && /[^A-Za-z0-9]/.test(v)),
-    { message: 'Mín. 8 chars, 1 maiúscula, 1 número, 1 especial (ou deixe em branco)' },
-  ),
+  password: z.union([z.literal(''), passwordFieldSchema]),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -39,23 +30,6 @@ const ROLE_OPTIONS = [
   { value: 'SECRETARY', label: 'Secretaria' },
   { value: 'TEACHER', label: 'Professor(a)' },
 ];
-
-function PasswordStrength({ value }: { value: string }) {
-  if (!value) return null;
-  return (
-    <ul className="mt-2 space-y-1">
-      {PASSWORD_RULES.map((rule) => {
-        const ok = rule.test(value);
-        return (
-          <li key={rule.label} className={cn('flex items-center gap-1.5 text-xs', ok ? 'text-green-600' : 'text-gray-400')}>
-            {ok ? <Check size={12} /> : <X size={12} />}
-            {rule.label}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 export default function EditUserPage() {
   const router = useRouter();

@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { guardiansApi } from '@/lib/api';
 import { isAuthenticated, clearTokens } from '@/lib/auth';
 import { User, Mail, Phone, LogOut, Save, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { PASSWORD_RULES, PasswordStrength } from '@/components/PasswordStrength';
 import { formatPhone } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { authApi } from '@/lib/api';
@@ -77,7 +78,8 @@ export default function GuardianPerfilPage() {
 
   async function savePassword() {
     setPasswordError('');
-    if (newPassword.length < 6) { setPasswordError('A senha deve ter ao menos 6 caracteres'); return; }
+    const failed = PASSWORD_RULES.find((r) => !r.test(newPassword));
+    if (failed) { setPasswordError(`Requisito não atendido: ${failed.label}`); return; }
     if (newPassword !== confirmPassword) { setPasswordError('As senhas não coincidem'); return; }
     setSavingPassword(true);
     try {
@@ -276,9 +278,10 @@ export default function GuardianPerfilPage() {
                     type={showNew ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mínimo 8 caracteres"
                     className="w-full px-3 py-2 pr-9 rounded-lg border border-gray-200 text-sm"
                   />
+                <PasswordStrength value={newPassword} />
                   <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                     {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>

@@ -20,18 +20,19 @@ export default function GuardianLayout({ children }: { children: React.ReactNode
   const router = useRouter();
   const [checked, setChecked] = useState(false);
   const isLoginPage = pathname === '/guardian';
+  const isPublicPage = isLoginPage || pathname.startsWith('/guardian/primeiro-acesso');
 
   useEffect(() => {
-    if (!isLoginPage && !isAuthenticated()) {
+    if (!isPublicPage && !isAuthenticated()) {
       router.replace('/guardian');
     } else {
       setChecked(true);
     }
-  }, [isLoginPage, router]);
+  }, [isPublicPage, router]);
 
   if (!checked) return null;
 
-  const showNav = !isLoginPage;
+  const showNav = !isPublicPage;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

@@ -93,6 +93,10 @@ export default function ClassDetailPage() {
     },
   });
 
+  const addRoomError = addRoomMut.error
+    ? ((addRoomMut.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erro ao adicionar sala')
+    : null;
+
   const removeRoomMut = useMutation({
     mutationFn: ({ roomId, shift }: { roomId: string; shift: string }) => classesApi.removeRoom(params.id, { roomId, shift }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['class', params.id] }),
@@ -188,6 +192,9 @@ export default function ClassDetailPage() {
               <input value={roomLabel} onChange={(e) => setRoomLabel(e.target.value)} placeholder="Ex: Grupo A"
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
             </div>
+            {addRoomError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addRoomError}</p>
+            )}
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowAddRoom(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
               <button onClick={() => addRoomMut.mutate()} disabled={!selectedRoomId || addRoomMut.isPending}

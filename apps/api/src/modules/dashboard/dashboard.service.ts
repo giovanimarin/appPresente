@@ -22,17 +22,14 @@ export class DashboardService {
       // Total alunos ativos
       prisma.student.count({ where: { schoolId, active: true } }),
 
-      // Responsáveis ativos
-      prisma.studentGuardian.count({
-        where: { status: 'ACTIVE', student: { schoolId } },
+      // Responsáveis ativos (ativaram a conta)
+      prisma.guardian.count({
+        where: { schoolId, active: true, activatedAt: { not: null } },
       }),
 
-      // Responsáveis com convite pendente
-      prisma.studentGuardian.count({
-        where: {
-          status: { in: ['PENDING_INVITE', 'PENDING_APPROVAL'] },
-          student: { schoolId },
-        },
+      // Responsáveis com convite pendente (ainda não ativaram)
+      prisma.guardian.count({
+        where: { schoolId, active: true, activatedAt: null },
       }),
 
       // Total comunicados

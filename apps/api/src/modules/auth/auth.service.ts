@@ -399,9 +399,15 @@ export class AuthService {
     if (!guardianId) throw { status: 400, code: 'INVALID_TOKEN', message: 'Link inválido ou expirado' };
 
     const hash = await bcrypt.hash(password, 10);
+    const now = new Date();
     await prisma.guardian.update({
       where: { id: guardianId },
-      data: { passwordHash: hash, activatedAt: new Date() },
+      data: { passwordHash: hash, activatedAt: now },
+    });
+    // Marca todos os vínculos pendentes como ativos — o responsável aceitou o convite
+    await prisma.studentGuardian.updateMany({
+      where: { guardianId, status: 'PENDING_INVITE' },
+      data: { status: 'ACTIVE', activatedAt: now },
     });
     await redis.del(redisKeys.guardianFirstAccess(token));
 

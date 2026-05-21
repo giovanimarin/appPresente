@@ -33,14 +33,6 @@ export default function ClassDetailPage() {
   const [selectedShift, setSelectedShift] = useState<string>('MATUTINO');
   const [roomLabel, setRoomLabel] = useState('');
 
-  // Turnos permitidos para associar sala à turma
-  const classShift: string | undefined = cls?.shift;
-  const allowedShifts = classShift === 'INTEGRAL'
-    ? ['MATUTINO', 'VESPERTINO']
-    : classShift
-    ? [classShift]
-    : ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'];
-
   // student panel state
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
@@ -70,6 +62,14 @@ export default function ClassDetailPage() {
     queryFn: () => studentsApi.list({ limit: 500 }).then((r) => r.data),
     enabled: showAddStudent,
   });
+
+  // Turnos permitidos para associar sala à turma
+  const classShift: string | undefined = cls?.shift;
+  const allowedShifts = classShift === 'INTEGRAL'
+    ? ['MATUTINO', 'VESPERTINO']
+    : classShift
+    ? [classShift]
+    : ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'];
 
   const currentRoomShiftKeys = new Set((cls?.classRooms ?? []).map((cr: ClassRoom) => `${cr.room.id}:${cr.shift}`));
   const shiftsWithRoom = new Set((cls?.classRooms ?? []).map((cr: ClassRoom) => cr.shift));

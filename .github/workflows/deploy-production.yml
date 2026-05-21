@@ -66,6 +66,7 @@ jobs:
           username: ubuntu
           key:      ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
+            docker image prune -f
             /opt/presente/deploy.sh ${{ steps.version.outputs.tag }}
 
       - name: Smoke test de produção

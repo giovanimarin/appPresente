@@ -45,6 +45,7 @@ jobs:
           username: ubuntu
           key:      ${{ secrets.STAGING_SSH_KEY }}
           script: |
+            docker image prune -f
             /opt/presente/deploy.sh ${{ github.sha }}
 
       - name: Smoke test

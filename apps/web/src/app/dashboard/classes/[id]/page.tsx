@@ -65,7 +65,7 @@ export default function ClassDetailPage() {
   });
 
   const currentRoomShiftKeys = new Set((cls?.classRooms ?? []).map((cr: ClassRoom) => `${cr.room.id}:${cr.shift}`));
-  const availableRooms = (roomsData?.data ?? []).filter((r: { id: string }) =>
+  const availableRooms = (roomsData ?? []).filter((r: { id: string }) =>
     !currentRoomShiftKeys.has(`${r.id}:${selectedShift}`)
   );
 

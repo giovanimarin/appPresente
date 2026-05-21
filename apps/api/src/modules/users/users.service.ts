@@ -87,14 +87,14 @@ export class UsersService {
     const updated = await prisma.user.update({ where: { id: userId }, data, select: USER_SELECT });
 
     // Reenviar e-mail de primeiro acesso se o e-mail mudou e o usuário nunca logou
-    const emailChanged = dto.email && dto.email !== user.email;
-    if (emailChanged && !user.lastLoginAt) {
+    const newEmail = dto.email;
+    if (newEmail && newEmail !== user.email && !user.lastLoginAt) {
       const token = randomUUID();
       await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
       const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
       const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
       try {
-        await sendWelcomeEmail(dto.email, user.name, user.school.name, firstAccessUrl);
+        await sendWelcomeEmail(newEmail, user.name, user.school.name, firstAccessUrl);
       } catch (e) {
         console.error('[users] Falha ao reenviar e-mail de boas-vindas:', e);
       }

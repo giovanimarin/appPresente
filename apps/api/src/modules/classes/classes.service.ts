@@ -305,18 +305,32 @@ export class ClassesService {
     } else {
       const cpf = dto.cpf?.replace(/\D/g, '') || undefined;
 
-      // Look up by CPF first, then phone
+      // Busca primeiro dentro da própria escola
       if (cpf) {
-        guardian = await prisma.guardian.findFirst({ where: { cpf } });
+        guardian = await prisma.guardian.findFirst({ where: { cpf, schoolId } });
       }
       if (!guardian && dto.phone) {
-        guardian = await prisma.guardian.findFirst({ where: { phone: dto.phone } });
+        guardian = await prisma.guardian.findFirst({ where: { phone: dto.phone, schoolId } });
       }
 
       if (!guardian) {
+        // Verifica se existe em outra escola para herdar activatedAt
+        let existingElsewhere = null;
+        if (cpf) existingElsewhere = await prisma.guardian.findFirst({ where: { cpf, schoolId: { not: schoolId } } });
+        if (!existingElsewhere && dto.phone) existingElsewhere = await prisma.guardian.findFirst({ where: { phone: dto.phone, schoolId: { not: schoolId } } });
+
         if (!dto.phone) throw { status: 400, code: 'PHONE_REQUIRED', message: 'Telefone é obrigatório para criar responsável' };
         guardian = await prisma.guardian.create({
-          data: { phone: dto.phone, name: dto.name?.trim() || '', email: dto.email?.trim().toLowerCase() || undefined, cpf: cpf || undefined, schoolId, active: true },
+          data: {
+            phone: dto.phone,
+            name: dto.name?.trim() || existingElsewhere?.name || '',
+            email: dto.email?.trim().toLowerCase() || existingElsewhere?.email || undefined,
+            cpf: cpf || existingElsewhere?.cpf || undefined,
+            schoolId,
+            active: true,
+            // Se já ativado em outra escola, herda o status
+            ...(existingElsewhere?.activatedAt ? { activatedAt: existingElsewhere.activatedAt } : {}),
+          },
         });
       } else {
         const updates: Record<string, unknown> = {};

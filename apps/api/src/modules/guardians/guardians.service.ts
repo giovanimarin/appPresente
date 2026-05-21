@@ -304,35 +304,24 @@ export class GuardiansService {
   }
 
   async listAll(schoolId: string, userId: string, role: string, query: { search?: string; status?: string; includeInactive?: boolean } = {}) {
-    // Inclui responsáveis criados nesta escola OU vinculados a alunos desta escola
-    // (um responsável pode ter schoolId de outra escola se foi encontrado via CPF/telefone)
-    const AND: Record<string, unknown>[] = [
-      { OR: [{ schoolId }, { studentGuardians: { some: { student: { schoolId } } } }] },
-    ];
-
-    if (!query.includeInactive) AND.push({ active: true });
-
+    const where: Record<string, unknown> = { schoolId };
+    if (!query.includeInactive) where.active = true;
     if (query.search) {
-      AND.push({
-        OR: [
-          { name: { contains: query.search, mode: 'insensitive' } },
-          { phone: { contains: query.search } },
-          { email: { contains: query.search, mode: 'insensitive' } },
-          { cpf: { contains: query.search.replace(/\D/g, '') } },
-        ],
-      });
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { phone: { contains: query.search } },
+        { email: { contains: query.search, mode: 'insensitive' } },
+        { cpf: { contains: query.search.replace(/\D/g, '') } },
+      ];
     }
-
-    if (query.status === 'activated') AND.push({ activatedAt: { not: null } });
-    if (query.status === 'pending') AND.push({ activatedAt: null });
+    if (query.status === 'activated') where.activatedAt = { not: null };
+    if (query.status === 'pending') where.activatedAt = null;
 
     if (role === 'TEACHER') {
       const teacherClasses = await prisma.classTeacher.findMany({ where: { teacherId: userId }, select: { classId: true } });
       const classIds = teacherClasses.map((c) => c.classId);
-      AND.push({ studentGuardians: { some: { student: { classId: { in: classIds }, schoolId }, status: { in: ['ACTIVE', 'PENDING_INVITE'] } } } });
+      where.studentGuardians = { some: { student: { classId: { in: classIds }, schoolId }, status: { in: ['ACTIVE', 'PENDING_INVITE'] } } };
     }
-
-    const where = { AND };
 
     const [data, total] = await Promise.all([
       prisma.guardian.findMany({

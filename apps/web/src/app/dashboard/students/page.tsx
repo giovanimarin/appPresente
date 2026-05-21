@@ -45,9 +45,18 @@ export default function StudentsPage() {
     return rows;
   }, [data, search, classFilter]);
 
+  const [deleteError, setDeleteError] = useState('');
+
   const archiveMut = useMutation({ mutationFn: (id: string) => studentsApi.archive(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['students'] }) });
   const reactivateMut = useMutation({ mutationFn: (id: string) => studentsApi.reactivate(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['students'] }) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => studentsApi.deletePermanent(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['students'] }) });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => studentsApi.deletePermanent(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['students'] }); setDeleteError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setDeleteError(e.response?.data?.error ?? 'Erro ao excluir aluno.');
+    },
+  });
 
   return (
     <div className="space-y-5">
@@ -95,6 +104,13 @@ export default function StudentsPage() {
           Ver desativados
         </label>
       </div>
+
+      {deleteError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{deleteError}</p>
+          <button onClick={() => setDeleteError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
         {isLoading ? (

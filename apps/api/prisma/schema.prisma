@@ -336,7 +336,7 @@ model Guardian {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   schoolId    String    @map("school_id") @db.Uuid
   name        String    @db.VarChar(200)
-  cpf         String?   @unique @db.VarChar(11) @map("cpf")
+  cpf         String?   @db.VarChar(11) @map("cpf")
   phone       String?   @db.VarChar(20)
   email       String?   @db.VarChar(200)
   pushToken   String?   @map("push_token")
@@ -361,6 +361,7 @@ model Guardian {
   schoolPreferences   GuardianSchoolPreference[]
   appointmentBookings AppointmentBooking[]
 
+  @@unique([cpf, schoolId], name: "guardians_cpf_school_id_key")
   @@index([phone], name: "idx_guardians_phone")
   @@index([cpf], name: "idx_guardians_cpf")
   @@map("guardians")

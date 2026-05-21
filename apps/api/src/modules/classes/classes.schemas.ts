@@ -12,6 +12,7 @@ export const createClassSchema = z.object({
   name: z.string().min(1).max(100),
   grade: z.string().max(50).optional(),
   year: z.number().int().min(2020).max(2100).optional(),
+  shift: z.enum(SHIFTS).optional(),
   coordinatorId: z.string().uuid().optional(),
   unitId: z.string().uuid().optional(),
   classRooms: z.array(classRoomSchema).optional(),

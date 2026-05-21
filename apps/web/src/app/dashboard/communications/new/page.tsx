@@ -37,20 +37,34 @@ const TYPE_OPTIONS = [
   { value: 'MEETING', label: 'Reunião' },
 ];
 
+type ClassOption = { id: string; name: string; grade?: string };
+type StudentOption = { id: string; name: string; class?: { name: string; grade?: string } };
+
+const MIN_SEARCH = 2;
+
 export default function NewCommunicationPage() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [classSearch, setClassSearch] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
 
-  const { data: classesData = [] } = useQuery<{ id: string; name: string; grade?: string }[]>({
-    queryKey: ['classes'],
-    queryFn: () => classesApi.list({ limit: 100 }).then((r) => r.data?.data ?? r.data),
+  // Armazena label dos itens selecionados para exibir mesmo sem busca ativa
+  const [selectedClassMap, setSelectedClassMap] = useState<Record<string, ClassOption>>({});
+  const [selectedStudentMap, setSelectedStudentMap] = useState<Record<string, StudentOption>>({});
+
+  const classSearchActive = classSearch.trim().length >= MIN_SEARCH;
+  const studentSearchActive = studentSearch.trim().length >= MIN_SEARCH;
+
+  const { data: classesData = [], isFetching: fetchingClasses } = useQuery<ClassOption[]>({
+    queryKey: ['classes-search', classSearch.trim()],
+    queryFn: () => classesApi.list({ limit: 50, search: classSearch.trim() }).then((r) => r.data?.data ?? r.data),
+    enabled: classSearchActive,
   });
 
-  const { data: studentsData = [] } = useQuery<{ id: string; name: string; class?: { name: string; grade?: string } }[]>({
-    queryKey: ['students'],
-    queryFn: () => studentsApi.list({ limit: 500 }).then((r) => r.data?.data ?? r.data),
+  const { data: studentsData = [], isFetching: fetchingStudents } = useQuery<StudentOption[]>({
+    queryKey: ['students-search', studentSearch.trim()],
+    queryFn: () => studentsApi.list({ limit: 100, search: studentSearch.trim() }).then((r) => r.data?.data ?? r.data),
+    enabled: studentSearchActive,
   });
 
   const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<FormData>({
@@ -98,12 +112,18 @@ export default function NewCommunicationPage() {
     },
   });
 
-  function toggleTarget(id: string) {
+  function toggleTarget(id: string, item?: ClassOption | StudentOption) {
     const current = targetIds ?? [];
     if (current.includes(id)) {
       setValue('targetIds', current.filter((t) => t !== id));
+      setSelectedClassMap((m) => { const n = { ...m }; delete n[id]; return n; });
+      setSelectedStudentMap((m) => { const n = { ...m }; delete n[id]; return n; });
     } else {
       setValue('targetIds', [...current, id]);
+      if (item) {
+        if (scope === 'CLASS') setSelectedClassMap((m) => ({ ...m, [id]: item as ClassOption }));
+        else setSelectedStudentMap((m) => ({ ...m, [id]: item as StudentOption }));
+      }
     }
   }
 
@@ -220,36 +240,53 @@ export default function NewCommunicationPage() {
           {scope === 'CLASS' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Turmas</label>
-              {classesData.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">Nenhuma turma encontrada</p>
-              ) : (
-                <>
-                  <div className="relative mb-2">
-                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      value={classSearch}
-                      onChange={(e) => setClassSearch(e.target.value)}
-                      placeholder="Filtrar turmas..."
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                    {classesData
-                      .filter((cls) => !classSearch || cls.name.toLowerCase().includes(classSearch.toLowerCase()) || cls.grade?.toLowerCase().includes(classSearch.toLowerCase()))
+
+              {/* Selecionadas */}
+              {Object.values(selectedClassMap).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {Object.values(selectedClassMap).map((cls) => (
+                    <span key={cls.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded-full">
+                      {cls.name}{cls.grade && ` — ${cls.grade}`}
+                      <button type="button" onClick={() => toggleTarget(cls.id)} className="hover:text-primary-900">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative mb-2">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={classSearch}
+                  onChange={(e) => setClassSearch(e.target.value)}
+                  placeholder="Digite ao menos 2 caracteres para buscar turmas..."
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                />
+              </div>
+
+              {classSearchActive && (
+                <div className="space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                  {fetchingClasses ? (
+                    <p className="text-xs text-gray-400 text-center py-3">Buscando...</p>
+                  ) : classesData.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">Nenhuma turma encontrada</p>
+                  ) : (
+                    classesData
+                      .filter((cls) => !selectedClassMap[cls.id])
                       .map((cls) => (
                         <label key={cls.id} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
                           <input
                             type="checkbox"
                             checked={targetIds?.includes(cls.id) ?? false}
-                            onChange={() => toggleTarget(cls.id)}
+                            onChange={() => toggleTarget(cls.id, cls)}
                             className="accent-primary-600"
                           />
                           <span className="text-sm text-gray-700">{cls.name}{cls.grade && ` — ${cls.grade}`}</span>
                         </label>
-                      ))}
-                  </div>
-                </>
+                      ))
+                  )}
+                </div>
               )}
+
               {errors.targetIds && <p className="mt-1 text-xs text-red-600">{errors.targetIds.message}</p>}
             </div>
           )}
@@ -257,28 +294,44 @@ export default function NewCommunicationPage() {
           {scope === 'STUDENT' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Alunos</label>
-              {studentsData.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">Nenhum aluno encontrado</p>
-              ) : (
-                <>
-                  <div className="relative mb-2">
-                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      value={studentSearch}
-                      onChange={(e) => setStudentSearch(e.target.value)}
-                      placeholder="Filtrar alunos..."
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                    {studentsData
-                      .filter((s) => !studentSearch || s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.class?.name.toLowerCase().includes(studentSearch.toLowerCase()))
+
+              {/* Selecionados */}
+              {Object.values(selectedStudentMap).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {Object.values(selectedStudentMap).map((s) => (
+                    <span key={s.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded-full">
+                      {s.name}
+                      <button type="button" onClick={() => toggleTarget(s.id)} className="hover:text-primary-900">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative mb-2">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  placeholder="Digite ao menos 2 caracteres para buscar alunos..."
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                />
+              </div>
+
+              {studentSearchActive && (
+                <div className="space-y-1 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                  {fetchingStudents ? (
+                    <p className="text-xs text-gray-400 text-center py-3">Buscando...</p>
+                  ) : studentsData.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">Nenhum aluno encontrado</p>
+                  ) : (
+                    studentsData
+                      .filter((s) => !selectedStudentMap[s.id])
                       .map((student) => (
                         <label key={student.id} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
                           <input
                             type="checkbox"
                             checked={targetIds?.includes(student.id) ?? false}
-                            onChange={() => toggleTarget(student.id)}
+                            onChange={() => toggleTarget(student.id, student)}
                             className="accent-primary-600"
                           />
                           <span className="text-sm text-gray-700">
@@ -286,10 +339,11 @@ export default function NewCommunicationPage() {
                             {student.class && <span className="text-gray-400 text-xs ml-1">· {student.class.name}{student.class.grade && ` ${student.class.grade}`}</span>}
                           </span>
                         </label>
-                      ))}
-                  </div>
-                </>
+                      ))
+                  )}
+                </div>
               )}
+
               {errors.targetIds && <p className="mt-1 text-xs text-red-600">{errors.targetIds.message}</p>}
             </div>
           )}

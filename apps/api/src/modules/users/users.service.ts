@@ -80,6 +80,11 @@ export class UsersService {
     });
     if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
 
+    if (dto.email && dto.email !== user.email) {
+      const emailTaken = await prisma.user.findFirst({ where: { email: dto.email, schoolId, NOT: { id: userId } } });
+      if (emailTaken) throw { status: 409, code: 'EMAIL_IN_USE', message: 'E-mail já cadastrado nesta escola' };
+    }
+
     const { password, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
     if (password) data.passwordHash = await bcrypt.hash(password, 12);

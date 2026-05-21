@@ -15,7 +15,6 @@ type ClassRoom = { id: string; shift: string; label?: string; room: { id: string
 const SHIFT_LABELS: Record<string, string> = {
   MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
 };
-const SHIFTS = ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'] as const;
 
 export default function ClassDetailPage() {
   const params = useParams<{ id: string }>();
@@ -33,6 +32,14 @@ export default function ClassDetailPage() {
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedShift, setSelectedShift] = useState<string>('MATUTINO');
   const [roomLabel, setRoomLabel] = useState('');
+
+  // Turnos permitidos para associar sala à turma
+  const classShift: string | undefined = cls?.shift;
+  const allowedShifts = classShift === 'INTEGRAL'
+    ? ['MATUTINO', 'VESPERTINO']
+    : classShift
+    ? [classShift]
+    : ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'];
 
   // student panel state
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -65,8 +72,9 @@ export default function ClassDetailPage() {
   });
 
   const currentRoomShiftKeys = new Set((cls?.classRooms ?? []).map((cr: ClassRoom) => `${cr.room.id}:${cr.shift}`));
-  const availableRooms = (roomsData ?? []).filter((r: { id: string }) =>
-    !currentRoomShiftKeys.has(`${r.id}:${selectedShift}`)
+  const shiftsWithRoom = new Set((cls?.classRooms ?? []).map((cr: ClassRoom) => cr.shift));
+  const availableRooms = (roomsData ?? []).filter((r: { id: string; active?: boolean }) =>
+    r.active !== false && !currentRoomShiftKeys.has(`${r.id}:${selectedShift}`)
   );
 
   const availableTeachers = (usersData?.data ?? []).filter(
@@ -140,6 +148,11 @@ export default function ClassDetailPage() {
           <h1 className="text-xl font-bold text-gray-900">{cls?.name}</h1>
           <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-0.5">
             <p className="text-sm text-gray-500">{[cls?.grade, cls?.year].filter(Boolean).join(' · ')}</p>
+            {cls?.shift && (
+              <span className="text-xs px-2 py-0.5 bg-primary-50 text-primary-700 rounded-full font-medium">
+                {SHIFT_LABELS[cls.shift] ?? cls.shift}
+              </span>
+            )}
             {(cls?.classRooms ?? []).map((cr: ClassRoom) => (
               <span key={cr.id} className="inline-flex items-center gap-1 text-sm text-gray-500">
                 <DoorOpen size={14} className="text-gray-400" />
@@ -162,7 +175,15 @@ export default function ClassDetailPage() {
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-sm text-gray-900">Salas e Turnos</h2>
-          <button onClick={() => { setShowAddRoom(!showAddRoom); setShowAddTeacher(false); setShowAddStudent(false); }}
+          <button onClick={() => {
+            setShowAddRoom(!showAddRoom);
+            setShowAddTeacher(false);
+            setShowAddStudent(false);
+            setSelectedRoomId('');
+            setRoomLabel('');
+            const initShift = classShift === 'INTEGRAL' ? 'MATUTINO' : (classShift ?? 'MATUTINO');
+            setSelectedShift(initShift);
+          }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-200">
             <Plus size={14} /> Adicionar
           </button>
@@ -170,21 +191,29 @@ export default function ClassDetailPage() {
 
         {showAddRoom && (
           <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Sala *</label>
+            <div className={allowedShifts.length > 1 ? 'grid grid-cols-2 gap-3' : ''}>
+              {allowedShifts.length > 1 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Turno *</label>
+                  <select value={selectedShift} onChange={(e) => { setSelectedShift(e.target.value); setSelectedRoomId(''); }}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                    {allowedShifts.map((s) => (
+                      <option key={s} value={s} disabled={shiftsWithRoom.has(s)}>
+                        {SHIFT_LABELS[s]}{shiftsWithRoom.has(s) ? ' (já possui sala)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className={allowedShifts.length === 1 ? 'w-full' : ''}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Sala *{allowedShifts.length === 1 && classShift && ` — ${SHIFT_LABELS[classShift] ?? classShift}`}
+                </label>
                 <SearchableSelect
                   options={(availableRooms ?? []).map((r: { id: string; name: string }) => ({ id: r.id, label: r.name }))}
                   value={selectedRoomId}
                   onChange={setSelectedRoomId}
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Turno *</label>
-                <select value={selectedShift} onChange={(e) => setSelectedShift(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                  {SHIFTS.map((s) => <option key={s} value={s}>{SHIFT_LABELS[s]}</option>)}
-                </select>
               </div>
             </div>
             <div>

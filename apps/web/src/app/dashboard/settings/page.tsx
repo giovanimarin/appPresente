@@ -15,7 +15,11 @@ import Image from 'next/image';
 const schema = z.object({
   name: z.string().min(1).max(200),
   cnpj: z.string().optional(),
-  address: z.string().optional(),
+  zipCode: z.string().optional(),
+  street: z.string().optional(),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  neighborhood: z.string().optional(),
   city: z.string().optional(),
   state: z.string().max(2).optional(),
   phone: z.string().optional(),
@@ -30,13 +34,15 @@ export default function SettingsPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+  const cepRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: school, isLoading } = useQuery({
     queryKey: ['school'],
     queryFn: () => schoolsApi.get().then((r) => r.data),
   });
 
-  const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<FormData>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
@@ -45,7 +51,11 @@ export default function SettingsPage() {
       reset({
         name: school.name ?? '',
         cnpj: school.cnpj ?? '',
-        address: school.address ?? '',
+        zipCode: school.zipCode ?? '',
+        street: school.street ?? school.address ?? '',
+        number: school.number ?? '',
+        complement: school.complement ?? '',
+        neighborhood: school.neighborhood ?? '',
         city: school.city ?? '',
         state: school.state ?? '',
         phone: school.phone ?? '',
@@ -56,9 +66,48 @@ export default function SettingsPage() {
   }, [school, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: FormData) => schoolsApi.update(data),
+    mutationFn: (data: FormData) => {
+      const addressParts = [data.street, data.number, data.complement, data.neighborhood].filter(Boolean).join(', ');
+      return schoolsApi.update({
+        name: data.name,
+        cnpj: data.cnpj,
+        address: addressParts || undefined,
+        city: data.city,
+        state: data.state,
+        phone: data.phone,
+        email: data.email,
+      });
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['school'] }),
   });
+
+  async function lookupCep(raw: string) {
+    const cep = raw.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setValue('street', data.logradouro ?? '', { shouldDirty: true });
+        setValue('neighborhood', data.bairro ?? '', { shouldDirty: true });
+        setValue('city', data.localidade ?? '', { shouldDirty: true });
+        setValue('state', data.uf ?? '', { shouldDirty: true });
+      }
+    } catch {
+      // ignora erros de lookup
+    } finally {
+      setCepLoading(false);
+    }
+  }
+
+  function onCepChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+    const formatted = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    setValue('zipCode', formatted, { shouldDirty: true });
+    if (cepRef.current) clearTimeout(cepRef.current);
+    cepRef.current = setTimeout(() => lookupCep(digits), 600);
+  }
 
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -178,12 +227,57 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
-            <input
-              {...register('address')}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500"
-            />
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+              <div className="relative">
+                <input
+                  {...register('zipCode')}
+                  placeholder="00000-000"
+                  maxLength={9}
+                  onChange={onCepChange}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500"
+                />
+                {cepLoading && (
+                  <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary-500" />
+                )}
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rua / Logradouro</label>
+              <input
+                {...register('street')}
+                placeholder="Rua das Flores"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+              <input
+                {...register('number')}
+                placeholder="123"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+              <input
+                {...register('complement')}
+                placeholder="Bloco A"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+              <input
+                {...register('neighborhood')}
+                placeholder="Centro"
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

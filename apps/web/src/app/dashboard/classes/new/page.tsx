@@ -11,10 +11,16 @@ import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SearchableSelect from '@/components/SearchableSelect';
 
+const SHIFTS = ['MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL'] as const;
+const SHIFT_LABELS: Record<string, string> = {
+  MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
+};
+
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
   grade: z.string().optional(),
   year: z.coerce.number().int().min(2020).max(2100).optional().or(z.literal(0)),
+  shift: z.enum(SHIFTS, { required_error: 'Selecione o turno' }),
   coordinatorId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
 });
 type FormData = z.infer<typeof schema>;
@@ -43,6 +49,7 @@ export default function NewClassPage() {
         name: data.name,
         grade: data.grade || undefined,
         year: data.year || undefined,
+        shift: data.shift,
         coordinatorId: data.coordinatorId,
       });
       await qc.invalidateQueries({ queryKey: ['classes'] });
@@ -73,6 +80,18 @@ export default function NewClassPage() {
               className={cn('w-full px-3 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none',
                 errors.name ? 'border-red-300' : 'border-gray-300')} />
             {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Turno *</label>
+            <select
+              {...register('shift')}
+              className={cn('w-full px-3 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white',
+                errors.shift ? 'border-red-300' : 'border-gray-300')}
+            >
+              <option value="">Selecione...</option>
+              {SHIFTS.map((s) => <option key={s} value={s}>{SHIFT_LABELS[s]}</option>)}
+            </select>
+            {errors.shift && <p className="mt-1 text-xs text-red-600">{errors.shift.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

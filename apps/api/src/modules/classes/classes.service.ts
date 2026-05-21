@@ -2,7 +2,7 @@ import { prisma } from '../../config/database';
 import type { CreateClassDto, UpdateClassDto, ClassRoomDto, CreateStudentDto, UpdateStudentDto } from './classes.schemas';
 
 const CLASS_SELECT = {
-  id: true, name: true, grade: true, year: true, active: true,
+  id: true, name: true, grade: true, year: true, shift: true, active: true,
   coordinator: { select: { id: true, name: true } },
   classRooms: { select: { id: true, shift: true, label: true, room: { select: { id: true, name: true } } } },
   classTeachers: { select: { teacher: { select: { id: true, name: true } }, subject: true, isHomeroom: true } },
@@ -25,7 +25,7 @@ export class ClassesService {
     if (role === 'COORDINATOR') where.coordinatorId = userId;
     if (query.search) where.name = { contains: query.search, mode: 'insensitive' };
     if (query.grade) where.grade = query.grade;
-    if (query.shift) where.classRooms = { some: { shift: query.shift } };
+    if (query.shift) where.shift = query.shift;
 
     const [data, total] = await Promise.all([
       prisma.class.findMany({ where, select: CLASS_SELECT as never, orderBy: { name: 'asc' } }),
@@ -78,7 +78,7 @@ export class ClassesService {
 
     return prisma.class.create({
       data: {
-        schoolId, name: dto.name, grade: dto.grade, year: dto.year,
+        schoolId, name: dto.name, grade: dto.grade, year: dto.year, shift: dto.shift,
         coordinatorId: dto.coordinatorId, unitId: dto.unitId, active: true,
         classRooms: dto.classRooms?.length
           ? { create: dto.classRooms.map((cr) => ({ roomId: cr.roomId, shift: cr.shift, label: cr.label })) }
@@ -92,12 +92,36 @@ export class ClassesService {
     const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
     if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
     const { classRooms: _, ...data } = dto;
-    return prisma.class.update({ where: { id: classId }, data, select: CLASS_SELECT as never });
+    return prisma.class.update({ where: { id: classId }, data: { ...data, shift: dto.shift ?? cls.shift }, select: CLASS_SELECT as never });
   }
 
   async addClassRoom(schoolId: string, classId: string, dto: ClassRoomDto) {
     const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
     if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
+
+    const SHIFT_LABELS: Record<string, string> = {
+      MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
+    };
+
+    // Valida compatibilidade de turno com o turno da turma
+    if (cls.shift) {
+      if (cls.shift === 'INTEGRAL') {
+        if (!['MATUTINO', 'VESPERTINO'].includes(dto.shift)) {
+          throw { status: 400, code: 'SHIFT_MISMATCH', message: 'Turmas integrais só aceitam salas nos turnos Matutino ou Vespertino' };
+        }
+      } else if (dto.shift !== cls.shift) {
+        const label = SHIFT_LABELS[cls.shift] ?? cls.shift;
+        throw { status: 400, code: 'SHIFT_MISMATCH', message: `Esta turma é ${label}. Só é possível associar salas no turno ${label}` };
+      }
+    }
+
+    // Valida: a turma já possui uma sala neste turno
+    const existingInShift = await prisma.classRoom.findFirst({ where: { classId, shift: dto.shift } });
+    if (existingInShift) {
+      const label = SHIFT_LABELS[dto.shift] ?? dto.shift;
+      throw { status: 409, code: 'SHIFT_ALREADY_HAS_ROOM', message: `Esta turma já possui uma sala no turno ${label}` };
+    }
+
     await this._checkRoomConflict(schoolId, dto.roomId, dto.shift, classId);
     return prisma.classRoom.create({
       data: { classId, roomId: dto.roomId, shift: dto.shift, label: dto.label },

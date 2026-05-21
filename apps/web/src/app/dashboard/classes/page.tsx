@@ -17,7 +17,14 @@ const SHIFT_LABELS: Record<string, string> = {
 };
 
 type ClassRoom = { id: string; shift: string; room: { name: string } };
-type Class = { id: string; name: string; grade?: string; year?: number; active: boolean; _count?: { students: number }; classRooms?: ClassRoom[] };
+type Class = { id: string; name: string; grade?: string; year?: number; shift?: string; active: boolean; _count?: { students: number }; classRooms?: ClassRoom[] };
+
+const SHIFT_COLORS: Record<string, string> = {
+  MATUTINO: 'bg-yellow-100 text-yellow-700',
+  VESPERTINO: 'bg-orange-100 text-orange-700',
+  NOTURNO: 'bg-indigo-100 text-indigo-700',
+  INTEGRAL: 'bg-green-100 text-green-700',
+};
 
 export default function ClassesPage() {
   const router = useRouter();
@@ -35,7 +42,7 @@ export default function ClassesPage() {
   const filtered = useMemo(() => {
     let rows: Class[] = data?.data ?? [];
     if (search) rows = rows.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.grade?.toLowerCase().includes(search.toLowerCase()));
-    if (shiftFilter) rows = rows.filter((c) => c.classRooms?.some((cr) => cr.shift === shiftFilter));
+    if (shiftFilter) rows = rows.filter((c) => c.shift === shiftFilter);
     return rows;
   }, [data, search, shiftFilter]);
 
@@ -119,6 +126,11 @@ export default function ClassesPage() {
                   <Users size={18} className="text-primary-600" />
                 </div>
                 {!cls.active && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Desativada</span>}
+                {cls.shift && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SHIFT_COLORS[cls.shift] ?? 'bg-gray-100 text-gray-500'}`}>
+                    {SHIFT_LABELS[cls.shift] ?? cls.shift}
+                  </span>
+                )}
               </div>
               <h3 className="font-semibold text-gray-900">{cls.name}</h3>
               <div className="flex gap-3 mt-2 text-xs text-gray-500">

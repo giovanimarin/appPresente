@@ -7,6 +7,7 @@ import {
   archiveClass, reactivateClass, deleteClassPermanent, getClassStudents,
   addClassTeacher, removeClassTeacher,
   addClassRoom, removeClassRoom,
+  removeStudentFromClass,
 } from './classes.controller';
 
 const router = Router();
@@ -20,6 +21,7 @@ router.post('/:id/archive', requireRoles('ADMIN'), archiveClass);
 router.post('/:id/reactivate', requireRoles('ADMIN'), reactivateClass);
 router.delete('/:id/permanent', requireRoles('ADMIN'), deleteClassPermanent);
 router.get('/:id/students', getClassStudents);
+router.delete('/:id/students/:studentId', requireRoles('ADMIN', 'SECRETARY', 'COORDINATOR'), removeStudentFromClass);
 router.post('/:id/teachers', requireRoles('ADMIN', 'COORDINATOR'), addClassTeacher);
 router.delete('/:id/teachers/:teacherId', requireRoles('ADMIN', 'COORDINATOR'), removeClassTeacher);
 router.post('/:id/rooms', requireRoles('ADMIN', 'SECRETARY'), validate(addClassRoomSchema), addClassRoom);

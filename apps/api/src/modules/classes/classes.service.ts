@@ -1,4 +1,8 @@
+import { randomBytes } from 'crypto';
 import { prisma } from '../../config/database';
+import { redis, redisKeys } from '../../config/redis';
+import { sendGuardianWelcomeEmail, sendGuardianLinkedToSchoolEmail } from '../../utils/mailer';
+import { sendPushToToken } from '../../utils/push';
 import type { CreateClassDto, UpdateClassDto, ClassRoomDto, CreateStudentDto, UpdateStudentDto } from './classes.schemas';
 
 const CLASS_SELECT = {
@@ -298,6 +302,7 @@ export class ClassesService {
     if (count >= 5) throw { status: 400, code: 'MAX_GUARDIANS_REACHED', message: 'Máximo de 5 responsáveis por aluno' };
 
     let guardian;
+    let existingElsewhere: { activatedAt: Date | null; pushToken: string | null; name: string; email: string | null; cpf: string | null } | null = null;
 
     if (dto.guardianId) {
       guardian = await prisma.guardian.findFirst({ where: { id: dto.guardianId, schoolId } });
@@ -315,9 +320,8 @@ export class ClassesService {
 
       if (!guardian) {
         // Verifica se existe em outra escola para herdar activatedAt
-        let existingElsewhere = null;
-        if (cpf) existingElsewhere = await prisma.guardian.findFirst({ where: { cpf, schoolId: { not: schoolId } } });
-        if (!existingElsewhere && dto.phone) existingElsewhere = await prisma.guardian.findFirst({ where: { phone: dto.phone, schoolId: { not: schoolId } } });
+        if (cpf) existingElsewhere = await prisma.guardian.findFirst({ where: { cpf, schoolId: { not: schoolId } }, select: { activatedAt: true, pushToken: true, name: true, email: true, cpf: true } });
+        if (!existingElsewhere && dto.phone) existingElsewhere = await prisma.guardian.findFirst({ where: { phone: dto.phone, schoolId: { not: schoolId } }, select: { activatedAt: true, pushToken: true, name: true, email: true, cpf: true } });
 
         if (!dto.phone) throw { status: 400, code: 'PHONE_REQUIRED', message: 'Telefone é obrigatório para criar responsável' };
         guardian = await prisma.guardian.create({
@@ -328,7 +332,6 @@ export class ClassesService {
             cpf: cpf || existingElsewhere?.cpf || undefined,
             schoolId,
             active: true,
-            // Se já ativado em outra escola, herda o status
             ...(existingElsewhere?.activatedAt ? { activatedAt: existingElsewhere.activatedAt } : {}),
           },
         });
@@ -369,7 +372,37 @@ export class ClassesService {
       },
     });
 
+    // Notifica o responsável sobre o vínculo
+    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+    const schoolName = school?.name ?? 'Escola';
+
+    if (guardian.activatedAt) {
+      // Responsável já ativo (nova escola) → e-mail informativo + push
+      const emailTo = guardian.email ?? existingElsewhere?.email ?? null;
+      if (emailTo) {
+        await sendGuardianLinkedToSchoolEmail(emailTo, guardian.name, schoolName);
+      }
+      const pushToken = existingElsewhere?.pushToken ?? guardian.pushToken;
+      if (pushToken) {
+        await sendPushToToken(pushToken, 'Nova escola no Presente', `Você foi vinculado à escola ${schoolName}`, { type: 'NEW_SCHOOL' });
+      }
+    } else if (guardian.email) {
+      // Responsável ainda não ativou → envia/reenvia e-mail de primeiro acesso
+      const token = randomBytes(32).toString('hex');
+      const webUrl = process.env.WEB_URL ?? 'https://app.apppresente.com.br';
+      await redis.set(redisKeys.guardianFirstAccess(token), guardian.id, 'EX', 60 * 60 * 72);
+      const firstAccessUrl = `${webUrl}/guardian/primeiro-acesso?token=${token}`;
+      await sendGuardianWelcomeEmail(guardian.email, guardian.name, schoolName, firstAccessUrl);
+    }
+
     return guardian;
+  }
+
+  async removeStudentFromClass(schoolId: string, classId: string, studentId: string) {
+    const student = await prisma.student.findFirst({ where: { id: studentId, schoolId, classId } });
+    if (!student) throw { status: 404, code: 'STUDENT_NOT_FOUND', message: 'Aluno não encontrado nesta turma' };
+    await prisma.student.update({ where: { id: studentId }, data: { classId: null } });
+    return { success: true };
   }
 
   async unlinkGuardianFromStudent(schoolId: string, studentId: string, guardianId: string) {

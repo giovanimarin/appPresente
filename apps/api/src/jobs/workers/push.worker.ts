@@ -1,16 +1,9 @@
 import { Worker, Job } from 'bullmq';
-import * as admin from 'firebase-admin';
 import { env } from '../../config/env';
 import { prisma } from '../../config/database';
+import { sendPushToTokens } from '../../utils/push';
 
 const connection = { url: env.REDIS_URL };
-
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
-
-const messaging = admin.messaging();
 
 interface CommPushJobData {
   communicationId: string;
@@ -54,36 +47,6 @@ async function getGuardianTokensForStudents(studentIds: string[], schoolId: stri
   return sgs.map((sg) => sg.guardian.pushToken).filter((t): t is string => t !== null);
 }
 
-async function sendPushNotifications(
-  tokens: string[],
-  title: string,
-  body: string,
-  data: Record<string, string>,
-) {
-  if (tokens.length === 0) return;
-
-  const results = await Promise.allSettled(
-    tokens.map((token) =>
-      messaging.send({
-        token,
-        notification: { title, body },
-        data,
-        android: { priority: 'high', notification: { sound: 'default' } },
-      }),
-    ),
-  );
-
-  const succeeded = results.filter((r) => r.status === 'fulfilled').length;
-  const failed = results.filter((r) => r.status === 'rejected');
-
-  failed.forEach((r) => {
-    if (r.status === 'rejected') {
-      console.error('[PushWorker] FCM error:', r.reason?.message ?? r.reason);
-    }
-  });
-
-  console.log(`[PushWorker] Sent to ${succeeded}/${tokens.length} devices`);
-}
 
 export const pushWorker = new Worker<PushJobData>(
   'push-notifications',
@@ -94,7 +57,7 @@ export const pushWorker = new Worker<PushJobData>(
       if (tokens.length === 0) return;
 
       const title = type === 'EVENT_CANCELLED' ? 'Evento cancelado' : 'Novo evento na agenda';
-      await sendPushNotifications(tokens, title, '', { type: 'AGENDA_EVENT', eventId });
+      await sendPushToTokens(tokens, title, '', { type: 'AGENDA_EVENT', eventId });
       return;
     }
 
@@ -122,7 +85,7 @@ export const pushWorker = new Worker<PushJobData>(
     };
     const title = `${typeLabel[type] ?? type}: ${comm.title}`;
 
-    await sendPushNotifications(tokens, title, comm.body.substring(0, 100), {
+    await sendPushToTokens(tokens, title, comm.body.substring(0, 100), {
       type: 'COMMUNICATION',
       communicationId,
     });

@@ -38,6 +38,11 @@ export default function ClassDetailPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
 
+  // confirmação de desvínculo
+  const [confirmRoomKey, setConfirmRoomKey] = useState<string | null>(null);
+  const [confirmTeacherId, setConfirmTeacherId] = useState<string | null>(null);
+  const [confirmStudentId, setConfirmStudentId] = useState<string | null>(null);
+
   const { data: cls, isLoading } = useQuery({
     queryKey: ['class', params.id],
     queryFn: () => classesApi.get(params.id).then((r) => r.data),
@@ -134,6 +139,15 @@ export default function ClassDetailPage() {
       setShowAddStudent(false);
       setStudentSearch('');
       setSelectedStudentId('');
+    },
+  });
+
+  const removeStudentMut = useMutation({
+    mutationFn: (studentId: string) => classesApi.removeStudent(params.id, studentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['class-students', params.id] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      setConfirmStudentId(null);
     },
   });
 
@@ -238,21 +252,32 @@ export default function ClassDetailPage() {
           {(cls?.classRooms ?? []).length === 0 && !showAddRoom && (
             <div className="text-center py-8 text-gray-400 text-sm">Nenhuma sala vinculada</div>
           )}
-          {(cls?.classRooms ?? []).map((cr: ClassRoom) => (
-            <div key={cr.id} className="px-5 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-700">
-                <DoorOpen size={15} />
+          {(cls?.classRooms ?? []).map((cr: ClassRoom) => {
+            const key = `${cr.room.id}:${cr.shift}`;
+            return (
+              <div key={cr.id} className="px-5 py-3 flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-700">
+                  <DoorOpen size={15} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{cr.room.name}</p>
+                  <p className="text-xs text-gray-400">{SHIFT_LABELS[cr.shift] ?? cr.shift}{cr.label ? ` · ${cr.label}` : ''}</p>
+                </div>
+                {confirmRoomKey === key ? (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-gray-500">Remover?</span>
+                    <button onClick={() => { removeRoomMut.mutate({ roomId: cr.room.id, shift: cr.shift }); setConfirmRoomKey(null); }}
+                      className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                    <button onClick={() => setConfirmRoomKey(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmRoomKey(key)} className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover">
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{cr.room.name}</p>
-                <p className="text-xs text-gray-400">{SHIFT_LABELS[cr.shift] ?? cr.shift}{cr.label ? ` · ${cr.label}` : ''}</p>
-              </div>
-              <button onClick={() => removeRoomMut.mutate({ roomId: cr.room.id, shift: cr.shift })} disabled={removeRoomMut.isPending}
-                className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover">
-                <X size={14} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -312,10 +337,18 @@ export default function ClassDetailPage() {
                 <p className="text-sm font-medium text-gray-900">{ct.teacher.name}</p>
                 <p className="text-xs text-gray-400">{[ct.subject, ct.isHomeroom ? 'Titular' : ''].filter(Boolean).join(' · ') || 'Sem disciplina'}</p>
               </div>
-              <button onClick={() => removeTeacherMut.mutate(ct.teacher.id)} disabled={removeTeacherMut.isPending}
-                className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover">
-                <X size={14} />
-              </button>
+              {confirmTeacherId === ct.teacher.id ? (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-gray-500">Remover?</span>
+                  <button onClick={() => { removeTeacherMut.mutate(ct.teacher.id); setConfirmTeacherId(null); }}
+                    className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                  <button onClick={() => setConfirmTeacherId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmTeacherId(ct.teacher.id)} className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -397,6 +430,18 @@ export default function ClassDetailPage() {
                 ))}
                 {student.studentGuardians.length === 0 && <span className="text-xs text-gray-300">Sem resp.</span>}
               </div>
+              {confirmStudentId === student.id ? (
+                <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
+                  <span className="text-gray-500">Desvincular?</span>
+                  <button onClick={() => removeStudentMut.mutate(student.id)}
+                    className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                  <button onClick={() => setConfirmStudentId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmStudentId(student.id)} className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 flex-shrink-0" title="Desvincular da turma">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -108,6 +108,11 @@ export async function deleteStudentPermanent(req: AuthRequest, res: Response, ne
   catch (e) { handle(e, res, next); }
 }
 
+export async function removeStudentFromClass(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try { res.json(await svc.removeStudentFromClass(req.user!.schoolId, req.params.id, req.params.studentId)); }
+  catch (e) { handle(e, res, next); }
+}
+
 export async function getStudentGuardians(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try { res.json(await svc.getStudentGuardians(req.user!.schoolId, req.params.id)); }
   catch (e) { handle(e, res, next); }

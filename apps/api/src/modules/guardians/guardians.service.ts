@@ -3,7 +3,8 @@ import { prisma } from '../../config/database';
 import { redis, redisKeys } from '../../config/redis';
 import { sendSms } from '../../utils/sms';
 import { generateOtp, storeOtp } from '../../utils/otp';
-import { sendGuardianWelcomeEmail } from '../../utils/mailer';
+import { sendGuardianWelcomeEmail, sendGuardianLinkedToSchoolEmail } from '../../utils/mailer';
+import { sendPushToToken } from '../../utils/push';
 import type { ActivateGuardianDto, UpdateGuardianDto, InviteGuardianDto, StaffUpdateGuardianDto } from './guardians.schemas';
 
 const MAX_GUARDIANS_PER_STUDENT = 5;
@@ -298,6 +299,20 @@ export class GuardiansService {
       const webUrl = process.env.WEB_URL ?? 'https://app.apppresente.com.br';
       const firstAccessUrl = `${webUrl}/guardian/primeiro-acesso?token=${token}`;
       await sendGuardianWelcomeEmail(email, guardian.name, school?.name ?? 'Escola', firstAccessUrl);
+    } else if (existingActivated) {
+      // Responsável já ativo em outra escola → e-mail informativo + push (sem link de primeiro acesso)
+      const emailTo = email ?? existingActivated.email;
+      if (emailTo) {
+        await sendGuardianLinkedToSchoolEmail(emailTo, guardian.name, school?.name ?? 'Escola');
+      }
+      if (existingActivated.pushToken) {
+        await sendPushToToken(
+          existingActivated.pushToken,
+          'Nova escola no Presente',
+          `Você foi vinculado à escola ${school?.name ?? 'Escola'}`,
+          { type: 'NEW_SCHOOL' },
+        );
+      }
     }
 
     return guardian;

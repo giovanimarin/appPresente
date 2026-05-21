@@ -97,6 +97,7 @@ export const classesApi = {
   removeRoom: (id: string, data: unknown) => api.delete(`/classes/${id}/rooms`, { data }),
   addTeacher: (classId: string, data: unknown) => api.post(`/classes/${classId}/teachers`, data),
   removeTeacher: (classId: string, teacherId: string) => api.delete(`/classes/${classId}/teachers/${teacherId}`),
+  removeStudent: (classId: string, studentId: string) => api.delete(`/classes/${classId}/students/${studentId}`),
 };
 
 // Students

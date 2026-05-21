@@ -35,6 +35,7 @@ export default function StudentDetailPage() {
 
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<'existing' | 'new'>('existing');
+  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
 
   // Existing guardian link
   const [guardianSearch, setGuardianSearch] = useState('');
@@ -122,6 +123,7 @@ export default function StudentDetailPage() {
   const unlinkMut = useMutation({
     mutationFn: (guardianId: string) => studentsApi.unlinkGuardian(params.id, guardianId),
     onSuccess: () => {
+      setConfirmUnlinkId(null);
       qc.invalidateQueries({ queryKey: ['student-guardians', params.id] });
       qc.invalidateQueries({ queryKey: ['students'] });
     },
@@ -369,10 +371,19 @@ export default function StudentDetailPage() {
                   {sg.guardian.email && <span className="flex items-center gap-1"><Mail size={11} />{sg.guardian.email}</span>}
                 </div>
               </div>
-              <button onClick={() => unlinkMut.mutate(sg.guardian.id)} disabled={unlinkMut.isPending}
-                className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 flex-shrink-0" title="Desvincular">
-                <X size={14} />
-              </button>
+              {confirmUnlinkId === sg.guardian.id ? (
+                <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
+                  <span className="text-gray-500">Desvincular?</span>
+                  <button onClick={() => unlinkMut.mutate(sg.guardian.id)}
+                    className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                  <button onClick={() => setConfirmUnlinkId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmUnlinkId(sg.guardian.id)} disabled={unlinkMut.isPending}
+                  className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 flex-shrink-0" title="Desvincular">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -150,6 +150,40 @@ export async function sendGuardianWelcomeEmail(
   }
 }
 
+export async function sendGuardianLinkedToSchoolEmail(
+  to: string,
+  guardianName: string,
+  schoolName: string,
+): Promise<void> {
+  const subject = `Você foi vinculado à escola ${schoolName} — Presente`;
+
+  const text = [
+    `Olá${guardianName ? `, ${guardianName}` : ''}!`,
+    '',
+    `A escola ${schoolName} vinculou seu cadastro no Presente.`,
+    '',
+    'A escola já aparece automaticamente no seu aplicativo. Não é necessária nenhuma ação.',
+    '',
+    'Caso não reconheça esta escola, entre em contato com ela.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="color:#1f2937">Nova escola no Presente</h2>
+      <p style="color:#555">Olá${guardianName ? `, <strong>${guardianName}</strong>` : ''}!</p>
+      <p style="color:#555">A escola <strong>${schoolName}</strong> vinculou seu cadastro no Presente.</p>
+      <p style="color:#059669;font-weight:600">A escola já aparece automaticamente no seu aplicativo. Não é necessária nenhuma ação.</p>
+      <p style="color:#9ca3af;font-size:13px">Caso não reconheça esta escola, entre em contato com ela.</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail(to, subject, text, html);
+  } catch (e) {
+    console.error('[mailer] Falha ao enviar e-mail de vínculo a nova escola:', e);
+  }
+}
+
 export async function sendCommunicationEmail(
   to: string,
   guardianName: string,

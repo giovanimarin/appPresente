@@ -18,7 +18,7 @@ const schema = z.object({
     required_error: 'Selecione um perfil',
   }),
   phone: z.string().optional(),
-  cpf: z.string().min(11, 'CPF obrigatório'),
+  cpf: z.string({ required_error: 'Campo obrigatório' }).min(11, 'CPF inválido'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -42,7 +42,7 @@ export default function NewUserPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { role: 'TEACHER' },
+    defaultValues: { role: 'TEACHER', cpf: '' },
   });
 
   function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {

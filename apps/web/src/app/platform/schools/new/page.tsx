@@ -11,8 +11,8 @@ import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const schema = z.object({
-  name: z.string().min(2, 'Nome obrigatorio'),
-  email: z.string().email('E-mail invalido'),
+  name: z.string().min(2, 'Nome obrigatório'),
+  email: z.string().email('E-mail inválido'),
   cnpj: z.string().max(20).optional(),
   phone: z.string().max(20).optional(),
   zipCode: z.string().optional(),
@@ -24,8 +24,8 @@ const schema = z.object({
   state: z.string().length(2, 'UF deve ter 2 letras').optional().or(z.literal('')),
   plan: z.enum(['STARTER', 'SCHOOL', 'NETWORK', 'ENTERPRISE']),
   trialDays: z.coerce.number().int().min(0).max(365),
-  adminName: z.string().min(2, 'Nome obrigatorio'),
-  adminEmail: z.string().email('E-mail invalido'),
+  adminName: z.string().min(2, 'Nome obrigatório'),
+  adminEmail: z.string().email('E-mail inválido'),
 });
 
 type FormData = z.infer<typeof schema>;

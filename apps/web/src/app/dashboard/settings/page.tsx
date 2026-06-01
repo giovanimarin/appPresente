@@ -13,7 +13,7 @@ import axios from 'axios';
 import Image from 'next/image';
 
 const schema = z.object({
-  name: z.string().min(1).max(200),
+  name: z.string().min(1, 'Nome obrigatório').max(200),
   cnpj: z.string().optional(),
   zipCode: z.string().optional(),
   street: z.string().optional(),

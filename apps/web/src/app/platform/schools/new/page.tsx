@@ -80,16 +80,19 @@ export default function NewSchoolPage() {
   async function onSubmit(data: FormData) {
     setLoading(true);
     setError('');
-    const addressParts = [data.street, data.number, data.complement, data.neighborhood].filter(Boolean).join(', ');
     try {
       const res = await schoolsApi.create({
         name: data.name,
         email: data.email,
         cnpj: data.cnpj || undefined,
         phone: data.phone || undefined,
+        zipCode: data.zipCode || undefined,
+        street: data.street || undefined,
+        number: data.number || undefined,
+        complement: data.complement || undefined,
+        neighborhood: data.neighborhood || undefined,
         city: data.city || undefined,
         state: data.state || undefined,
-        address: addressParts || undefined,
         plan: data.plan,
         trialDays: data.trialDays,
         adminName: data.adminName,

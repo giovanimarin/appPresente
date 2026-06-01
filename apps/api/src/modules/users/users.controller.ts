@@ -67,6 +67,17 @@ export async function reactivateUser(req: AuthRequest, res: Response, next: Next
   }
 }
 
+export async function resendUserInvite(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await usersService.resendInvite(req.user!.schoolId, req.params.id);
+    res.json(result);
+  } catch (err: unknown) {
+    const e = err as { status?: number; code?: string; message?: string };
+    if (e.status) { res.status(e.status).json({ error: e.message, code: e.code }); return; }
+    next(err);
+  }
+}
+
 export async function deleteUserPermanent(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await usersService.deletePermanent(req.user!.schoolId, req.params.id, req.user!.id);

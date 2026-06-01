@@ -80,6 +80,7 @@ export const usersApi = {
   update: (id: string, data: unknown) => api.put(`/users/${id}`, data),
   archive: (id: string) => api.post(`/users/${id}/archive`),
   reactivate: (id: string) => api.post(`/users/${id}/reactivate`),
+  resendInvite: (id: string) => api.post(`/users/${id}/resend-invite`),
   deletePermanent: (id: string) => api.delete(`/users/${id}/permanent`),
 };
 

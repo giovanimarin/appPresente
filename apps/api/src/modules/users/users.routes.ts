@@ -4,7 +4,7 @@ import { validate } from '../../middlewares/validate';
 import { createUserSchema, updateUserSchema } from './users.schemas';
 import {
   listUsers, getUser, createUser, updateUser,
-  archiveUser, reactivateUser, deleteUserPermanent,
+  archiveUser, reactivateUser, deleteUserPermanent, resendUserInvite,
 } from './users.controller';
 
 const router = Router();
@@ -17,6 +17,7 @@ router.get('/:id', getUser);
 router.put('/:id', validate(updateUserSchema), updateUser);
 router.post('/:id/archive', archiveUser);
 router.post('/:id/reactivate', reactivateUser);
+router.post('/:id/resend-invite', resendUserInvite);
 router.delete('/:id/permanent', deleteUserPermanent);
 
 export default router;

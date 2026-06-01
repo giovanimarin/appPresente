@@ -117,6 +117,23 @@ export class UsersService {
     return prisma.user.update({ where: { id: userId }, data: { active }, select: { id: true, active: true } });
   }
 
+  async resendInvite(schoolId: string, userId: string) {
+    const user = await prisma.user.findFirst({
+      where: { id: userId, schoolId },
+      include: { school: { select: { name: true } } },
+    });
+    if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
+    if (user.lastLoginAt) throw { status: 400, code: 'ALREADY_ACTIVATED', message: 'Este usuário já realizou o primeiro acesso' };
+
+    const token = randomUUID();
+    await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
+    const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+    const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+    await sendWelcomeEmail(user.email, user.name, user.school.name, firstAccessUrl);
+
+    return { ok: true };
+  }
+
   async deletePermanent(schoolId: string, userId: string, requesterId: string) {
     if (userId === requesterId) {
       throw { status: 400, code: 'CANNOT_DELETE_SELF', message: 'Não é possível excluir sua própria conta' };

@@ -9,7 +9,7 @@ import {
   revokeRefreshToken,
 } from '../../utils/jwt';
 import { generateOtp, storeOtp, verifyOtp, checkOtpRateLimit } from '../../utils/otp';
-import { sendOtpEmail, sendPasswordResetEmail } from '../../utils/mailer';
+import { sendOtpEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../../utils/mailer';
 import { redis, redisKeys } from '../../config/redis';
 import type { LoginDto, OtpSendDto, OtpVerifyDto, RefreshDto, GuardianLoginDto, GuardianSetPasswordDto, UpdateMeDto, FirstAccessDto, ForgotPasswordDto, ResetPasswordDto } from './auth.schemas';
 
@@ -315,20 +315,31 @@ export class AuthService {
   // ── Recuperação de Senha ──────────────────────────────────────────────────
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await prisma.user.findFirst({ where: { email: dto.email, active: true } });
+    const user = await prisma.user.findFirst({
+      where: { email: dto.email, active: true },
+      include: { school: { select: { name: true } } },
+    });
     // Não revela se o e-mail existe ou não
     if (!user) return { message: 'Se o e-mail estiver cadastrado, você receberá um link em breve.' };
 
-    const token = randomUUID();
-    await redis.set(redisKeys.passwordReset(token), user.id, 'EX', 60 * 60);
-
     const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
-    const resetUrl = `${frontendUrl}/redefinir-senha?token=${token}`;
 
     try {
-      await sendPasswordResetEmail(dto.email, user.name, resetUrl);
+      if (!user.lastLoginAt) {
+        // Usuário nunca fez primeiro acesso — reenvia link de ativação
+        const token = randomUUID();
+        await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
+        const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+        await sendWelcomeEmail(dto.email, user.name, user.school?.name ?? 'Escola', firstAccessUrl);
+      } else {
+        // Usuário já ativo — envia link de redefinição de senha
+        const token = randomUUID();
+        await redis.set(redisKeys.passwordReset(token), user.id, 'EX', 60 * 60);
+        const resetUrl = `${frontendUrl}/redefinir-senha?token=${token}`;
+        await sendPasswordResetEmail(dto.email, user.name, resetUrl);
+      }
     } catch (e) {
-      console.error('[auth] Falha ao enviar e-mail de recuperação:', e);
+      console.error('[auth] Falha ao enviar e-mail:', e);
     }
 
     return { message: 'Se o e-mail estiver cadastrado, você receberá um link em breve.' };

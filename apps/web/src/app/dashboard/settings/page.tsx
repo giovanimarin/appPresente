@@ -52,7 +52,7 @@ export default function SettingsPage() {
         name: school.name ?? '',
         cnpj: school.cnpj ?? '',
         zipCode: school.zipCode ?? '',
-        street: school.street ?? school.address ?? '',
+        street: school.street ?? '',
         number: school.number ?? '',
         complement: school.complement ?? '',
         neighborhood: school.neighborhood ?? '',
@@ -66,18 +66,19 @@ export default function SettingsPage() {
   }, [school, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: FormData) => {
-      const addressParts = [data.street, data.number, data.complement, data.neighborhood].filter(Boolean).join(', ');
-      return schoolsApi.update({
-        name: data.name,
-        cnpj: data.cnpj,
-        address: addressParts || undefined,
-        city: data.city,
-        state: data.state,
-        phone: data.phone,
-        email: data.email,
-      });
-    },
+    mutationFn: (data: FormData) => schoolsApi.update({
+      name: data.name,
+      cnpj: data.cnpj,
+      zipCode: data.zipCode,
+      street: data.street,
+      number: data.number,
+      complement: data.complement,
+      neighborhood: data.neighborhood,
+      city: data.city,
+      state: data.state,
+      phone: data.phone,
+      email: data.email,
+    }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['school'] }),
   });
 

@@ -157,7 +157,7 @@ model User {
   email        String    @db.VarChar(200)
   passwordHash String    @map("password_hash")
   role         UserRole
-  cpf          String?   @unique @db.VarChar(11)
+  cpf          String?   @db.VarChar(11)
   phone        String?   @db.VarChar(20)
   avatarUrl    String?   @map("avatar_url")
   active       Boolean   @default(true)
@@ -198,6 +198,7 @@ model User {
   appointmentSlots AppointmentSlot[] @relation("SlotCreatedBy")
 
   @@unique([email, schoolId])
+  @@unique([cpf, schoolId], name: "users_cpf_school_id_key")
   @@index([schoolId, role], name: "idx_users_school")
   @@map("users")
 }

@@ -43,20 +43,31 @@ export class UsersService {
       ? await bcrypt.hash(dto.password, 12)
       : await bcrypt.hash(randomUUID(), 12);
 
-    const user = await prisma.user.create({
-      data: {
-        schoolId,
-        name: dto.name,
-        email: dto.email,
-        passwordHash,
-        role: dto.role as 'SECRETARY' | 'COORDINATOR' | 'TEACHER',
-        phone: dto.phone,
-        cpf: cpf,
-        unitId: dto.unitId,
-        active: true,
-      },
-      select: { ...USER_SELECT, school: { select: { name: true } } },
-    });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          schoolId,
+          name: dto.name,
+          email: dto.email,
+          passwordHash,
+          role: dto.role as 'SECRETARY' | 'COORDINATOR' | 'TEACHER',
+          phone: dto.phone,
+          cpf: cpf,
+          unitId: dto.unitId,
+          active: true,
+        },
+        select: { ...USER_SELECT, school: { select: { name: true } } },
+      });
+    } catch (e: unknown) {
+      const err = e as { code?: string; meta?: { target?: string[] } };
+      if (err.code === 'P2002') {
+        const target = err.meta?.target ?? [];
+        if (target.includes('cpf')) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um usuário com este CPF nesta escola' };
+        if (target.includes('email')) throw { status: 409, code: 'EMAIL_IN_USE', message: 'E-mail já cadastrado nesta escola' };
+      }
+      throw e;
+    }
 
     if (!dto.password) {
       const token = randomUUID();

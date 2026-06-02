@@ -16,7 +16,10 @@ const schema = z.object({
   name: z.string().min(2, 'Nome obrigatório (mín. 2 caracteres)'),
   classId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   enrollmentCode: z.string().optional(),
-  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(
+    (v) => v <= new Date().toISOString().split('T')[0],
+    { message: 'Data de nascimento não pode ser no futuro' },
+  ).optional().or(z.literal('')),
   gender: z.enum(['masculino', 'feminino', 'outro', 'nao_informado', '']).optional(),
   notes: z.string().optional(),
   cpf: z.string().optional(),
@@ -113,9 +116,13 @@ export default function NewStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento</label>
-              <Controller name="birthDate" control={control} render={({ field }) => (
-                <DateInput value={field.value ?? ''} onChange={field.onChange}
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+              <Controller name="birthDate" control={control} render={({ field, fieldState }) => (
+                <>
+                  <DateInput value={field.value ?? ''} onChange={field.onChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                  {fieldState.error && <p className="mt-1 text-xs text-red-600">{fieldState.error.message}</p>}
+                </>
               )} />
             </div>
           </div>

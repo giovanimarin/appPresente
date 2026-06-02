@@ -9,6 +9,7 @@ interface DateInputProps {
   onChange?: (value: string) => void; // emits yyyy-mm-dd or ''
   className?: string;
   name?: string;
+  max?: string; // yyyy-mm-dd
 }
 
 function isoToDisplay(iso: string): string {
@@ -32,7 +33,7 @@ function applyMask(raw: string): string {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
-export default function DateInput({ value = '', onChange, className, name }: DateInputProps) {
+export default function DateInput({ value = '', onChange, className, name, max }: DateInputProps) {
   const [display, setDisplay] = useState(() => isoToDisplay(value));
   const pickerRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +49,7 @@ export default function DateInput({ value = '', onChange, className, name }: Dat
 
   function handlePickerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const iso = e.target.value; // yyyy-mm-dd
+    if (max && iso > max) return;
     setDisplay(isoToDisplay(iso));
     onChange?.(iso);
   }
@@ -77,6 +79,7 @@ export default function DateInput({ value = '', onChange, className, name }: Dat
         type="date"
         value={displayToIso(display)}
         onChange={handlePickerChange}
+        max={max}
         className="absolute inset-0 opacity-0 pointer-events-none w-full"
         tabIndex={-1}
       />

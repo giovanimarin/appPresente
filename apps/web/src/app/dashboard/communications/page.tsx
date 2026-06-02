@@ -73,13 +73,26 @@ export default function CommunicationsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['communications'] }),
   });
 
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState('');
   const cancelMutation = useMutation({
     mutationFn: (id: string) => communicationsApi.cancel(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['communications'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['communications'] }); setConfirmCancelId(null); setCancelError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setCancelError(e.response?.data?.error ?? 'Erro ao cancelar comunicado.');
+      setConfirmCancelId(null);
+    },
   });
 
   return (
     <div className="space-y-5">
+      {cancelError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{cancelError}</p>
+          <button onClick={() => setCancelError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {(classId || studentId) && (
@@ -198,14 +211,22 @@ export default function CommunicationsPage() {
                   </button>
                 )}
                 {comm.schoolStatus !== 'CANCELLED' && (
-                  <button
-                    onClick={() => cancelMutation.mutate(comm.id)}
-                    disabled={cancelMutation.isPending}
-                    className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                    title="Cancelar"
-                  >
-                    <X size={16} />
-                  </button>
+                  confirmCancelId === comm.id ? (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-gray-500">Cancelar?</span>
+                      <button onClick={() => cancelMutation.mutate(comm.id)}
+                        className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                      <button onClick={() => setConfirmCancelId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmCancelId(comm.id)}
+                      className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                      title="Cancelar comunicado"
+                    >
+                      <X size={16} />
+                    </button>
+                  )
                 )}
               </div>
             </div>

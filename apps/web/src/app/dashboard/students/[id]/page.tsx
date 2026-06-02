@@ -120,12 +120,19 @@ export default function StudentDetailPage() {
     },
   });
 
+  const [unlinkError, setUnlinkError] = useState('');
   const unlinkMut = useMutation({
     mutationFn: (guardianId: string) => studentsApi.unlinkGuardian(params.id, guardianId),
     onSuccess: () => {
       setConfirmUnlinkId(null);
+      setUnlinkError('');
       qc.invalidateQueries({ queryKey: ['student-guardians', params.id] });
       qc.invalidateQueries({ queryKey: ['students'] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setUnlinkError(e.response?.data?.error ?? 'Erro ao desvincular responsável.');
+      setConfirmUnlinkId(null);
     },
   });
 
@@ -184,6 +191,13 @@ export default function StudentDetailPage() {
           <p className="col-span-2 text-gray-400 italic text-xs">Nenhuma informação adicional cadastrada</p>
         )}
       </div>
+
+      {unlinkError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{unlinkError}</p>
+          <button onClick={() => setUnlinkError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
 
       {/* Responsáveis */}
       <div className="bg-white rounded-xl border border-gray-200">

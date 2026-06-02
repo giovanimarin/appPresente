@@ -46,12 +46,26 @@ export default function ClassesPage() {
     return rows;
   }, [data, search, shiftFilter]);
 
+  const [deleteError, setDeleteError] = useState('');
   const archiveMut = useMutation({ mutationFn: (id: string) => classesApi.archive(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['classes'] }) });
   const reactivateMut = useMutation({ mutationFn: (id: string) => classesApi.reactivate(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['classes'] }) });
-  const deleteMut = useMutation({ mutationFn: (id: string) => classesApi.deletePermanent(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['classes'] }) });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => classesApi.deletePermanent(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['classes'] }); setDeleteError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setDeleteError(e.response?.data?.error ?? 'Erro ao excluir turma.');
+    },
+  });
 
   return (
     <div className="space-y-5">
+      {deleteError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{deleteError}</p>
+          <button onClick={() => setDeleteError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Turmas</h1>

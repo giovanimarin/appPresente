@@ -142,13 +142,24 @@ export default function RoomsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms'] }),
   });
 
+  const [deleteError, setDeleteError] = useState('');
   const deleteMut = useMutation({
     mutationFn: (id: string) => roomsApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['rooms'] }); setDeleteError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setDeleteError(e.response?.data?.error ?? 'Erro ao excluir sala.');
+    },
   });
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {deleteError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{deleteError}</p>
+          <button onClick={() => setDeleteError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Salas</h1>

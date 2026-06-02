@@ -110,11 +110,17 @@ export default function ClassDetailPage() {
     ? ((addRoomMut.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erro ao adicionar sala')
     : null;
 
+  const [removeRoomError, setRemoveRoomError] = useState('');
   const removeRoomMut = useMutation({
     mutationFn: ({ roomId, shift }: { roomId: string; shift: string }) => classesApi.removeRoom(params.id, { roomId, shift }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['class', params.id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['class', params.id] }); setRemoveRoomError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setRemoveRoomError(e.response?.data?.error ?? 'Erro ao remover sala.');
+    },
   });
 
+  const [removeTeacherError, setRemoveTeacherError] = useState('');
   const addTeacherMut = useMutation({
     mutationFn: () => classesApi.addTeacher(params.id, { teacherId: selectedTeacherId, subject: subject || undefined, isHomeroom }),
     onSuccess: () => {
@@ -128,7 +134,11 @@ export default function ClassDetailPage() {
 
   const removeTeacherMut = useMutation({
     mutationFn: (teacherId: string) => classesApi.removeTeacher(params.id, teacherId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['class', params.id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['class', params.id] }); setRemoveTeacherError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setRemoveTeacherError(e.response?.data?.error ?? 'Erro ao remover professor.');
+    },
   });
 
   const addStudentMut = useMutation({
@@ -142,11 +152,18 @@ export default function ClassDetailPage() {
     },
   });
 
+  const [removeStudentError, setRemoveStudentError] = useState('');
   const removeStudentMut = useMutation({
     mutationFn: (studentId: string) => classesApi.removeStudent(params.id, studentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['class-students', params.id] });
       qc.invalidateQueries({ queryKey: ['students'] });
+      setConfirmStudentId(null);
+      setRemoveStudentError('');
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setRemoveStudentError(e.response?.data?.error ?? 'Erro ao desvincular aluno.');
       setConfirmStudentId(null);
     },
   });
@@ -184,6 +201,25 @@ export default function ClassDetailPage() {
           <Pencil size={14} /> Editar turma
         </Link>
       </div>
+
+      {removeRoomError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{removeRoomError}</p>
+          <button onClick={() => setRemoveRoomError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
+      {removeTeacherError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{removeTeacherError}</p>
+          <button onClick={() => setRemoveTeacherError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
+      {removeStudentError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{removeStudentError}</p>
+          <button onClick={() => setRemoveStudentError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
 
       {/* Salas e Turnos */}
       <div className="bg-white rounded-xl border border-gray-200">

@@ -67,9 +67,15 @@ export default function FormsPage() {
     return (data?.data ?? []).filter((f: Form) => f.title.toLowerCase().includes(search.toLowerCase()));
   }, [data, search]);
 
+  const [deleteError, setDeleteError] = useState('');
   const deleteMut = useMutation({
     mutationFn: (id: string) => formsApi.deletePermanent(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['forms'] }); setConfirmDeleteId(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['forms'] }); setConfirmDeleteId(null); setDeleteError(''); },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setDeleteError(e.response?.data?.error ?? 'Erro ao excluir formulário.');
+      setConfirmDeleteId(null);
+    },
   });
 
   const [creatingTemplate, setCreatingTemplate] = useState<string | null>(null);
@@ -96,6 +102,12 @@ export default function FormsPage() {
 
   return (
     <div className="space-y-5">
+      {deleteError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{deleteError}</p>
+          <button onClick={() => setDeleteError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Formulários</h1>

@@ -144,10 +144,19 @@ export default function GuardianDetailPage() {
     },
   });
 
+  const [confirmUnlinkStudentId, setConfirmUnlinkStudentId] = useState<string | null>(null);
+  const [unlinkStudentError, setUnlinkStudentError] = useState('');
   const unlinkStudentMut = useMutation({
     mutationFn: (studentId: string) => studentsApi.unlinkGuardian(studentId, params.id),
     onSuccess: () => {
+      setConfirmUnlinkStudentId(null);
+      setUnlinkStudentError('');
       qc.invalidateQueries({ queryKey: ['guardian', params.id] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } };
+      setUnlinkStudentError(e.response?.data?.error ?? 'Erro ao desvincular aluno.');
+      setConfirmUnlinkStudentId(null);
     },
   });
 
@@ -425,14 +434,29 @@ export default function GuardianDetailPage() {
                   <span>{sg.student.class?.name} · {sg.student.class?.grade}</span>
                 </div>
               </div>
-              <button onClick={() => unlinkStudentMut.mutate(sg.student.id)} disabled={unlinkStudentMut.isPending}
-                className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 flex-shrink-0" title="Desvincular">
-                <X size={14} />
-              </button>
+              {confirmUnlinkStudentId === sg.student.id ? (
+                <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
+                  <span className="text-gray-500">Desvincular?</span>
+                  <button onClick={() => unlinkStudentMut.mutate(sg.student.id)}
+                    className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                  <button onClick={() => setConfirmUnlinkStudentId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmUnlinkStudentId(sg.student.id)} disabled={unlinkStudentMut.isPending}
+                  className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 flex-shrink-0" title="Desvincular">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>
       </div>
+      {unlinkStudentError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{unlinkStudentError}</p>
+          <button onClick={() => setUnlinkStudentError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
     </div>
   );
 }

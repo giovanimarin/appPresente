@@ -36,8 +36,8 @@ export class UsersService {
 
     const cpf = dto.cpf?.replace(/\D/g, '');
     if (!cpf) throw { status: 400, code: 'CPF_REQUIRED', message: 'CPF é obrigatório' };
-    const existingCpf = await prisma.user.findFirst({ where: { cpf } });
-    if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um usuário com este CPF' };
+    const existingCpf = await prisma.user.findFirst({ where: { cpf, schoolId } });
+    if (existingCpf) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um usuário com este CPF nesta escola' };
 
     const passwordHash = dto.password
       ? await bcrypt.hash(dto.password, 12)

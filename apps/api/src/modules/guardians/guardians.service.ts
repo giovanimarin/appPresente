@@ -377,8 +377,8 @@ export class GuardiansService {
     if (!guardian) throw { status: 404, code: 'GUARDIAN_NOT_FOUND', message: 'Responsável não encontrado' };
     const cpf = dto.cpf !== undefined ? (dto.cpf ? dto.cpf.replace(/\D/g, '') || null : null) : undefined;
     if (cpf) {
-      const conflict = await prisma.guardian.findFirst({ where: { cpf, NOT: { id: guardianId } } });
-      if (conflict) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF' };
+      const conflict = await prisma.guardian.findFirst({ where: { cpf, schoolId, NOT: { id: guardianId } } });
+      if (conflict) throw { status: 409, code: 'CPF_IN_USE', message: 'Já existe um responsável com este CPF nesta escola' };
     }
     return prisma.guardian.update({
       where: { id: guardianId },

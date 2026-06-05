@@ -86,7 +86,6 @@ export default function NewCommunicationPage() {
   const targetIds = watch('targetIds');
   const schoolType = watch('schoolType');
   const needsEventDate = schoolType === 'EXAM' || schoolType === 'MEETING';
-  const sendNow = watch('sendNow');
   const channels = watch('channels') ?? ['notification'];
 
   function toggleChannel(c: 'notification' | 'email') {
@@ -360,13 +359,9 @@ export default function NewCommunicationPage() {
             <input type="checkbox" {...register('autoReminder')} className="accent-primary-600" />
             <span className="text-sm text-gray-700">Enviar lembrete automático após 24h</span>
           </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" {...register('sendNow')} className="accent-primary-600" />
-            <span className="text-sm text-gray-700 font-medium">Enviar imediatamente</span>
-          </label>
-          {sendNow && (
-            <div className="ml-6 pl-3 border-l-2 border-gray-200 space-y-2">
-              <p className="text-xs font-medium text-gray-500">Canais de entrega</p>
+          <div className="pt-1">
+            <p className="text-xs font-medium text-gray-500 mb-2">Canais de entrega</p>
+            <div className="space-y-2">
               {([['notification', Bell, 'Notificação no app/web'], ['email', Mail, 'E-mail']] as const).map(([c, Icon, label]) => (
                 <label key={c} className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={channels.includes(c)} onChange={() => toggleChannel(c)} className="accent-primary-600" />
@@ -375,7 +370,7 @@ export default function NewCommunicationPage() {
                 </label>
               ))}
             </div>
-          )}
+          </div>
         </div>
 
         {error && (
@@ -386,15 +381,25 @@ export default function NewCommunicationPage() {
 
         <div className="flex gap-3">
           <button
-            type="submit"
+            type="button"
             disabled={createMutation.isPending}
+            onClick={() => { setValue('sendNow', true); handleSubmit((d) => createMutation.mutate(d))(); }}
             className={cn(
               'flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium',
               'hover:bg-primary-700 transition-colors disabled:opacity-70',
             )}
           >
-            {watch('sendNow') ? <Send size={16} /> : <Save size={16} />}
-            {createMutation.isPending ? 'Salvando...' : watch('sendNow') ? 'Enviar' : 'Salvar rascunho'}
+            <Send size={16} />
+            {createMutation.isPending ? 'Enviando...' : 'Enviar imediatamente'}
+          </button>
+          <button
+            type="button"
+            disabled={createMutation.isPending}
+            onClick={() => { setValue('sendNow', false); handleSubmit((d) => createMutation.mutate(d))(); }}
+            className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-70"
+          >
+            <Save size={16} />
+            {createMutation.isPending ? 'Salvando...' : 'Salvar rascunho'}
           </button>
           <button
             type="button"

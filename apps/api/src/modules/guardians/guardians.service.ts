@@ -345,7 +345,7 @@ export class GuardiansService {
         include: {
           studentGuardians: {
             where: { status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
-            include: { student: { select: { id: true, name: true } } },
+            include: { student: { select: { id: true, name: true, class: { select: { id: true, name: true, grade: true } } } } },
           },
         },
         orderBy: { name: 'asc' },

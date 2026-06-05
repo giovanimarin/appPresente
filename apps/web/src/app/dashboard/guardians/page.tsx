@@ -15,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Guardian = {
   id: string; name: string; phone: string; email?: string; cpf?: string; active: boolean; activatedAt?: string;
-  studentGuardians: { student: { id: string; name: string } }[];
+  studentGuardians: { student: { id: string; name: string; class?: { id: string; name: string; grade?: string } | null } }[];
 };
 
 export default function GuardiansPage() {
@@ -231,16 +231,23 @@ export default function GuardiansPage() {
                     {formatPhone(g.phone)}{g.cpf ? ` · CPF ${formatCpf(g.cpf)}` : ''}{g.email ? ` · ${g.email}` : ''}
                   </p>
                   {g.studentGuardians?.length > 0 && (
-                    <p className="text-xs text-gray-400">
-                      {g.studentGuardians.map((sg, i) => (
-                        <span key={sg.student.id}>
-                          {i > 0 && ', '}
-                          <Link href={`/dashboard/students/${sg.student.id}`} className="hover:text-primary-600 hover:underline">
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                      {g.studentGuardians.map((sg) => (
+                        <span key={sg.student.id} className="flex items-center gap-1.5 text-sm">
+                          <Link href={`/dashboard/students/${sg.student.id}`} className="font-medium text-gray-700 hover:text-primary-600 hover:underline">
                             {sg.student.name}
                           </Link>
+                          {sg.student.class && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <Link href={`/dashboard/classes/${sg.student.class.id}`} className="text-gray-500 hover:text-primary-600 hover:underline">
+                                {sg.student.class.name}{sg.student.class.grade ? ` (${sg.student.class.grade})` : ''}
+                              </Link>
+                            </>
+                          )}
                         </span>
                       ))}
-                    </p>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2">

@@ -96,7 +96,7 @@ export class CommunicationsService {
       const channels = dto.channels ?? ['notification'];
 
       if (channels.includes('notification')) {
-        await this._enqueuePushNotifications(comm.id, schoolId, dto.scope, dto.targetIds, dto.schoolType);
+        await this._enqueuePushNotifications(comm.id, schoolId, dto.scope, dto.targetIds, dto.schoolType, dto.audienceFilter ?? 'ALL');
       }
 
       // Cria notificações no inbox e envia e-mails conforme canais escolhidos
@@ -104,6 +104,7 @@ export class CommunicationsService {
         where: {
           status: { in: ['ACTIVE', 'PENDING_INVITE'] },
           ...(dto.scope === 'CLASS' ? { student: { classId: { in: dto.targetIds } } } : { studentId: { in: dto.targetIds } }),
+          ...this._audienceWhere(dto.audienceFilter ?? 'ALL'),
         },
         select: { guardianId: true },
       });
@@ -192,13 +193,14 @@ export class CommunicationsService {
       ? (await prisma.communicationClass.findMany({ where: { communicationId: commId } })).map((c) => c.classId)
       : (await prisma.communicationStudent.findMany({ where: { communicationId: commId } })).map((s) => s.studentId);
 
-    await this._enqueuePushNotifications(commId, schoolId, scope, targetIds, comm.schoolType!);
+    await this._enqueuePushNotifications(commId, schoolId, scope, targetIds, comm.schoolType!, comm.audienceFilter ?? 'ALL');
 
     // Cria notificações no inbox de cada responsável
     const links = await prisma.studentGuardian.findMany({
       where: {
         status: { in: ['ACTIVE', 'PENDING_INVITE'] },
         ...(scope === 'CLASS' ? { student: { classId: { in: targetIds } } } : { studentId: { in: targetIds } }),
+        ...this._audienceWhere(comm.audienceFilter ?? 'ALL'),
       },
       select: { guardianId: true },
     });
@@ -646,6 +648,12 @@ export class CommunicationsService {
     });
   }
 
+  private _audienceWhere(audienceFilter: string): Record<string, unknown> {
+    if (audienceFilter === 'LEGAL') return { isLegalGuardian: true };
+    if (audienceFilter === 'FINANCIAL') return { isFinancialGuardian: true };
+    return {};
+  }
+
   // ── Entrega manual: notificação no inbox e/ou e-mail ─────────────────────
 
   async deliver(
@@ -661,7 +669,7 @@ export class CommunicationsService {
   ) {
     const comm = await prisma.communication.findFirst({
       where: { id: commId, schoolId },
-      select: { id: true, schoolStatus: true, title: true, body: true, scope: true },
+      select: { id: true, schoolStatus: true, title: true, body: true, scope: true, audienceFilter: true },
     });
     if (!comm) throw { status: 404, code: 'COMM_NOT_FOUND', message: 'Comunicado não encontrado' };
     if (comm.schoolStatus !== 'SENT') throw { status: 400, code: 'NOT_SENT', message: 'Comunicado ainda não foi enviado' };
@@ -695,6 +703,7 @@ export class CommunicationsService {
           status: { in: ['ACTIVE', 'PENDING_INVITE'] },
           ...(classIds.length > 0 ? { student: { classId: { in: classIds } } } : {}),
           ...(studentIds.length > 0 ? { studentId: { in: studentIds } } : {}),
+          ...this._audienceWhere(comm.audienceFilter ?? 'ALL'),
         },
         include: { guardian: { select: { id: true, email: true, name: true } } },
       });
@@ -842,14 +851,14 @@ export class CommunicationsService {
     if (comm.scope === 'CLASS') {
       const classIds = (await prisma.communicationClass.findMany({ where: { communicationId: commId } })).map((c) => c.classId);
       const links = await prisma.studentGuardian.findMany({
-        where: { student: { classId: { in: classIds } }, status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
+        where: { student: { classId: { in: classIds } }, status: { in: ['ACTIVE', 'PENDING_INVITE'] }, ...this._audienceWhere(comm.audienceFilter ?? 'ALL') },
         select: { guardianId: true },
       });
       pendingIds = [...new Set(links.map((l) => l.guardianId))].filter((id) => !confirmedGuardianIds.has(id));
     } else {
       const studentIds = (await prisma.communicationStudent.findMany({ where: { communicationId: commId } })).map((s) => s.studentId);
       const links = await prisma.studentGuardian.findMany({
-        where: { studentId: { in: studentIds }, status: { in: ['ACTIVE', 'PENDING_INVITE'] } },
+        where: { studentId: { in: studentIds }, status: { in: ['ACTIVE', 'PENDING_INVITE'] }, ...this._audienceWhere(comm.audienceFilter ?? 'ALL') },
         select: { guardianId: true },
       });
       pendingIds = [...new Set(links.map((l) => l.guardianId))].filter((id) => !confirmedGuardianIds.has(id));
@@ -859,7 +868,7 @@ export class CommunicationsService {
 
     await prisma.communication.update({ where: { id: commId }, data: { reminderCount: { increment: 1 } } });
 
-    await this._enqueuePushNotifications(commId, schoolId, comm.scope, pendingIds, comm.schoolType!);
+    await this._enqueuePushNotifications(commId, schoolId, comm.scope, pendingIds, comm.schoolType!, comm.audienceFilter ?? 'ALL');
 
     // Registra reenvio na agenda
     const classIdsForAgenda = comm.scope === 'CLASS'
@@ -893,6 +902,7 @@ export class CommunicationsService {
     scope: string,
     targetIds: string[],
     type: string,
+    audienceFilter: string = 'ALL',
   ) {
     await pushQueue.add('send-push', {
       communicationId: commId,
@@ -900,6 +910,7 @@ export class CommunicationsService {
       scope,
       targetIds,
       type,
+      audienceFilter,
     }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
   }
 

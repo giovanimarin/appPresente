@@ -11,6 +11,7 @@ interface CommPushJobData {
   scope: string;
   targetIds: string[];
   type: string;
+  audienceFilter?: string;
 }
 
 interface EventPushJobData {
@@ -22,25 +23,33 @@ interface EventPushJobData {
 
 type PushJobData = CommPushJobData | EventPushJobData;
 
-async function getGuardianTokensForClasses(classIds: string[], schoolId: string) {
+function audienceWhere(audienceFilter?: string): Record<string, unknown> {
+  if (audienceFilter === 'LEGAL') return { isLegalGuardian: true };
+  if (audienceFilter === 'FINANCIAL') return { isFinancialGuardian: true };
+  return {};
+}
+
+async function getGuardianTokensForClasses(classIds: string[], schoolId: string, audienceFilter?: string) {
   const sgs = await prisma.studentGuardian.findMany({
     where: {
       status: { in: ['ACTIVE', 'PENDING_INVITE'] },
       student: { schoolId, classId: { in: classIds } },
       guardian: { pushToken: { not: null } },
+      ...audienceWhere(audienceFilter),
     },
     select: { guardian: { select: { pushToken: true } } },
   });
   return sgs.map((sg) => sg.guardian.pushToken).filter((t): t is string => t !== null);
 }
 
-async function getGuardianTokensForStudents(studentIds: string[], schoolId: string) {
+async function getGuardianTokensForStudents(studentIds: string[], schoolId: string, audienceFilter?: string) {
   const sgs = await prisma.studentGuardian.findMany({
     where: {
       status: { in: ['ACTIVE', 'PENDING_INVITE'] },
       studentId: { in: studentIds },
       student: { schoolId },
       guardian: { pushToken: { not: null } },
+      ...audienceWhere(audienceFilter),
     },
     select: { guardian: { select: { pushToken: true } } },
   });
@@ -61,7 +70,7 @@ export const pushWorker = new Worker<PushJobData>(
       return;
     }
 
-    const { communicationId, schoolId, scope, targetIds, type } = job.data;
+    const { communicationId, schoolId, scope, targetIds, type, audienceFilter } = job.data;
 
     const comm = await prisma.communication.findFirst({
       where: { id: communicationId },
@@ -74,8 +83,8 @@ export const pushWorker = new Worker<PushJobData>(
     }
 
     const tokens = scope === 'CLASS'
-      ? await getGuardianTokensForClasses(targetIds, schoolId)
-      : await getGuardianTokensForStudents(targetIds, schoolId);
+      ? await getGuardianTokensForClasses(targetIds, schoolId, audienceFilter)
+      : await getGuardianTokensForStudents(targetIds, schoolId, audienceFilter);
 
     if (tokens.length === 0) return;
 

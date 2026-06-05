@@ -22,6 +22,12 @@ export const reminderWorker = new Worker(
       },
     });
 
+    function audienceWhere(audienceFilter: string): Record<string, unknown> {
+      if (audienceFilter === 'LEGAL') return { isLegalGuardian: true };
+      if (audienceFilter === 'FINANCIAL') return { isFinancialGuardian: true };
+      return {};
+    }
+
     if (!comm) {
       console.log(`[ReminderWorker] Comm ${communicationId} not found or not sent`);
       return;
@@ -38,6 +44,8 @@ export const reminderWorker = new Worker(
     // Find guardians who haven't read yet
     let unreadGuardians: { id: string; pushToken: string | null }[];
 
+    const audience = audienceWhere(comm.audienceFilter ?? 'ALL');
+
     if (comm.scope === 'CLASS') {
       const classIds = comm.commClasses.map((cc) => cc.classId);
       unreadGuardians = await prisma.guardian.findMany({
@@ -46,6 +54,7 @@ export const reminderWorker = new Worker(
             some: {
               status: 'ACTIVE',
               student: { classId: { in: classIds }, schoolId: comm.schoolId },
+              ...audience,
             },
           },
           pushToken: { not: null },
@@ -61,6 +70,7 @@ export const reminderWorker = new Worker(
             some: {
               status: 'ACTIVE',
               studentId: { in: studentIds },
+              ...audience,
             },
           },
           pushToken: { not: null },

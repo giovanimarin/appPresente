@@ -225,18 +225,6 @@ export default function NewCommunicationPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Público-alvo</label>
-            <select
-              {...register('audienceFilter')}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="ALL">Todos os responsáveis</option>
-              <option value="LEGAL">Somente responsáveis legais</option>
-              <option value="FINANCIAL">Somente responsáveis financeiros</option>
-            </select>
-          </div>
-
           {scope === 'CLASS' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Turmas</label>
@@ -347,6 +335,18 @@ export default function NewCommunicationPage() {
               {errors.targetIds && <p className="mt-1 text-xs text-red-600">{errors.targetIds.message}</p>}
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Público-alvo</label>
+            <select
+              {...register('audienceFilter')}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="ALL">Todos os responsáveis</option>
+              <option value="LEGAL">Somente responsáveis legais</option>
+              <option value="FINANCIAL">Somente responsáveis financeiros</option>
+            </select>
+          </div>
         </div>
 
         {/* Options */}

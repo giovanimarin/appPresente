@@ -20,6 +20,25 @@ const ROLE_LABELS: Record<Role, string> = {
   TEACHER: 'Professor(a)',
 };
 
+// Ordered from most specific to least specific (longer prefix takes precedence)
+const ROUTE_PERMISSIONS: Array<{ prefix: string; roles: Role[] }> = [
+  { prefix: '/dashboard/users',                   roles: ['ADMIN'] },
+  { prefix: '/dashboard/settings',                roles: ['ADMIN'] },
+  { prefix: '/dashboard/rooms',                   roles: ['ADMIN', 'SECRETARY'] },
+  { prefix: '/dashboard/communications/requests', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+  { prefix: '/dashboard/forms',                   roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+];
+
+function hasRouteAccess(pathname: string, role: Role): boolean {
+  const sorted = [...ROUTE_PERMISSIONS].sort((a, b) => b.prefix.length - a.prefix.length);
+  for (const { prefix, roles } of sorted) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
+      return roles.includes(role);
+    }
+  }
+  return true;
+}
+
 type NavGroup = {
   label: string;
   roles: string[];
@@ -69,11 +88,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace('/login');
-    } else {
-      setUser(getUser());
-      setChecked(true);
+      return;
     }
-  }, [router]);
+    const currentUser = getUser();
+    const role = (currentUser?.role ?? 'TEACHER') as Role;
+    if (!hasRouteAccess(pathname, role)) {
+      router.replace('/dashboard');
+      return;
+    }
+    setUser(currentUser);
+    setChecked(true);
+  }, [router, pathname]);
 
   if (!checked) return null;
 

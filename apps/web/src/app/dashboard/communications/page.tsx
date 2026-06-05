@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { communicationsApi } from '@/lib/api';
 import { formatDateTime, commTypeLabel, commTypeColor, cn } from '@/lib/utils';
 import { getUser } from '@/lib/auth';
-import { Plus, Send, X, Loader2, Download, Inbox, ArrowLeft } from 'lucide-react';
+import { Plus, Send, X, Loader2, Download, Inbox, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 async function exportReadReport(commId: string, commTitle: string) {
@@ -83,6 +83,12 @@ export default function CommunicationsPage() {
       setCancelError(e.response?.data?.error ?? 'Erro ao cancelar comunicado.');
       setConfirmCancelId(null);
     },
+  });
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => communicationsApi.deleteDraft(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['communications'] }); setConfirmDeleteId(null); },
   });
 
   return (
@@ -201,14 +207,33 @@ export default function CommunicationsPage() {
                   </button>
                 )}
                 {comm.schoolStatus === 'DRAFT' && (
-                  <button
-                    onClick={() => sendMutation.mutate(comm.id)}
-                    disabled={sendMutation.isPending}
-                    className="p-1.5 text-green-600 hover:text-green-800 rounded-lg hover:bg-green-50"
-                    title="Enviar agora"
-                  >
-                    <Send size={16} />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => sendMutation.mutate(comm.id)}
+                      disabled={sendMutation.isPending}
+                      className="p-1.5 text-green-600 hover:text-green-800 rounded-lg hover:bg-green-50"
+                      title="Enviar agora"
+                    >
+                      <Send size={16} />
+                    </button>
+                    {confirmDeleteId === comm.id ? (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-gray-500">Excluir?</span>
+                        <button onClick={() => deleteMutation.mutate(comm.id)}
+                          className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(comm.id)}
+                        className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                        title="Excluir rascunho permanentemente"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </>
                 )}
                 {comm.schoolStatus !== 'CANCELLED' && (
                   confirmCancelId === comm.id ? (

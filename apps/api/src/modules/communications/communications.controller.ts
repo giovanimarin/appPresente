@@ -62,6 +62,13 @@ export async function cancelCommunication(req: AuthRequest, res: Response, next:
   } catch (err) { handleError(err, res, next); }
 }
 
+export async function deleteDraftCommunication(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await commSvc.deleteDraft(req.user!.schoolId, req.params.id);
+    res.json(result);
+  } catch (err) { handleError(err, res, next); }
+}
+
 export async function getReadReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const report = await commSvc.getReadReport(req.user!.schoolId, req.params.id);

@@ -3,6 +3,7 @@ import { prisma } from '../../config/database';
 import { redis, redisKeys } from '../../config/redis';
 import { generateAccessToken } from '../../utils/jwt';
 import { randomUUID } from 'crypto';
+import { sendWelcomeEmail } from '../../utils/mailer';
 import type { PlatformLoginDto, SchoolListQuery, UpdateSchoolPlanDto, CreateSchoolDto } from './platform.schemas';
 
 // Limites padrão por plano
@@ -412,8 +413,8 @@ export class PlatformService {
       throw { status: 409, code: 'ADMIN_EMAIL_IN_USE', message: 'Já existe um usuário com esse e-mail' };
     }
 
-    const tempPassword = 'Presente@' + Math.floor(1000 + Math.random() * 9000);
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    // Senha inutilizável — admin definirá a própria senha via link de primeiro acesso
+    const placeholderHash = await bcrypt.hash(randomUUID(), 12);
 
     // Conta de suporte da plataforma — senha definida via env
     const supportEmail = process.env.SUPPORT_EMAIL ?? 'suporte@apppresente.com.br';
@@ -446,7 +447,7 @@ export class PlatformService {
             {
               name: dto.adminName,
               email: dto.adminEmail,
-              passwordHash,
+              passwordHash: placeholderHash,
               role: 'ADMIN',
               active: true,
             },
@@ -470,10 +471,22 @@ export class PlatformService {
 
     const admin = school.users.find((u) => u.email === dto.adminEmail);
 
+    // Envia e-mail de primeiro acesso ao admin (igual ao fluxo padrão)
+    if (admin) {
+      const token = randomUUID();
+      await redis.set(redisKeys.firstAccess(token), admin.id, 'EX', 72 * 60 * 60);
+      const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+      const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+      try {
+        await sendWelcomeEmail(dto.adminEmail, dto.adminName, school.name, firstAccessUrl);
+      } catch (e) {
+        console.error('[platform] Falha ao enviar e-mail de boas-vindas:', e);
+      }
+    }
+
     return {
       school: { id: school.id, name: school.name, email: school.email, plan: school.plan, trialEndsAt: school.trialEndsAt },
       admin,
-      tempPassword,
     };
   }
 
@@ -496,14 +509,19 @@ export class PlatformService {
   // ── Redefinir senha do diretor ────────────────────────────────────────────
 
   async resetDirectorPassword(schoolId: string, userId: string) {
-    const user = await prisma.user.findFirst({ where: { id: userId, schoolId, role: 'ADMIN' } });
+    const user = await prisma.user.findFirst({
+      where: { id: userId, schoolId, role: 'ADMIN' },
+      include: { school: { select: { name: true } } },
+    });
     if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
 
-    const newPassword = 'Presente@' + Math.floor(1000 + Math.random() * 9000);
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    const token = randomUUID();
+    await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
+    const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
+    const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
+    await sendWelcomeEmail(user.email, user.name, user.school.name, firstAccessUrl);
 
-    return { newPassword };
+    return { ok: true, message: 'Link de primeiro acesso enviado para ' + user.email };
   }
 
   // ── Arquivar escola (soft delete) ─────────────────────────────────────────

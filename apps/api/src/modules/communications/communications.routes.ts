@@ -10,7 +10,7 @@ import {
 } from './communications.schemas';
 import {
   listCommunications, createCommunication, getCommunicationById,
-  sendCommunication, resendCommunication, deliverCommunication, cancelCommunication, getReadReport,
+  sendCommunication, resendCommunication, deliverCommunication, cancelCommunication, deleteDraftCommunication, getReadReport,
   getGuardianNotifications, markNotificationRead,
   getGuardianFeed, trackReceived, trackViewed, confirmRead,
   createGuardianCommunication, resolveGuardianCommunication,
@@ -29,6 +29,7 @@ router.post('/:id/send', authenticate, requireStaff, requireRoles('ADMIN', 'SECR
 router.post('/:id/resend', authenticate, requireStaff, requireRoles('ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'), resendCommunication);
 router.post('/:id/deliver', authenticate, requireStaff, requireRoles('ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'), deliverCommunication);
 router.post('/:id/cancel', authenticate, requireStaff, requireRoles('ADMIN', 'SECRETARY'), cancelCommunication);
+router.delete('/:id', authenticate, requireStaff, requireRoles('ADMIN', 'SECRETARY'), deleteDraftCommunication);
 router.get('/:id/read-report', authenticate, requireStaff, getReadReport);
 router.post('/:id/resolve', authenticate, requireStaff, requireRoles('ADMIN', 'SECRETARY', 'COORDINATOR'), resolveGuardianCommunication);
 

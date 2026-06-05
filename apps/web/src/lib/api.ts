@@ -146,6 +146,7 @@ export const communicationsApi = {
   resend: (id: string) => api.post(`/communications/${id}/resend`),
   deliver: (id: string, data: unknown) => api.post(`/communications/${id}/deliver`, data),
   cancel: (id: string) => api.post(`/communications/${id}/cancel`),
+  deleteDraft: (id: string) => api.delete(`/communications/${id}`),
   readReport: (id: string) => api.get(`/communications/${id}/read-report`),
   guardianFeed: (schoolId?: string) =>
     api.get('/communications/guardian/feed', { params: schoolId ? { schoolId } : undefined }),

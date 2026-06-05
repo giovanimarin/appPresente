@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { communicationsApi } from '@/lib/api';
 import { cn, commTypeLabel, commTypeColor, formatDateTime } from '@/lib/utils';
-import { ArrowLeft, Send, X, Download, CheckCircle2, Clock, Loader2, Users, Bell, Mail, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Send, X, Download, CheckCircle2, Clock, Loader2, Users, Bell, Mail, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -31,6 +31,10 @@ type Report = {
     id: string; title: string; schoolType: string; schoolStatus: string;
     sentAt?: string; eventDate?: string; requiresConfirmation: boolean; scope: string;
     commClasses: { id: string; name: string }[];
+    createdAt?: string;
+    author?: { name: string } | null;
+    cancelledAt?: string | null;
+    cancelledByUser?: { name: string } | null;
   };
   stats: { total: number; receivedCount: number; viewedCount: number; confirmedCount: number };
   readRate: number; total: number;
@@ -87,6 +91,9 @@ export default function CommunicationDetailPage() {
   const router = useRouter();
   const qc = useQueryClient();
 
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   // Deliver panel state
   const [showDeliver, setShowDeliver] = useState(false);
   const [channels, setChannels] = useState<Channel[]>(['notification']);
@@ -107,7 +114,11 @@ export default function CommunicationDetailPage() {
   });
   const cancelMut = useMutation({
     mutationFn: () => communicationsApi.cancel(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['communication-report', id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['communication-report', id] }); setConfirmCancel(false); },
+  });
+  const deleteMut = useMutation({
+    mutationFn: () => communicationsApi.deleteDraft(id),
+    onSuccess: () => router.push('/dashboard/communications'),
   });
   const deliverMut = useMutation({
     mutationFn: () => communicationsApi.deliver(id, {
@@ -162,7 +173,11 @@ export default function CommunicationDetailPage() {
           </div>
           <h1 className="text-xl font-bold text-gray-900 truncate">{comm.title}</h1>
           <div className="flex flex-wrap gap-3 text-xs text-gray-400 mt-1">
-            {comm.sentAt && <span>Enviado em {formatDateTime(comm.sentAt)}</span>}
+            {comm.author && <span>Criado por <span className="text-gray-600 font-medium">{comm.author.name}</span></span>}
+            {comm.sentAt && <span>· Enviado em {formatDateTime(comm.sentAt)}</span>}
+            {comm.cancelledAt && comm.cancelledByUser && (
+              <span className="text-red-500">· Cancelado por {comm.cancelledByUser.name} em {formatDateTime(comm.cancelledAt)}</span>
+            )}
             {comm.eventDate && (
               <span className="text-indigo-600 font-medium">
                 {comm.schoolType === 'EXAM' ? 'Prova' : 'Reunião'}: {new Date(comm.eventDate).toLocaleDateString('pt-BR')}
@@ -186,16 +201,46 @@ export default function CommunicationDetailPage() {
             </>
           )}
           {isDraft && (
-            <button onClick={() => sendMut.mutate()} disabled={sendMut.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-60">
-              <Send size={13} /> {sendMut.isPending ? 'Enviando...' : 'Enviar'}
-            </button>
+            <>
+              <button onClick={() => sendMut.mutate()} disabled={sendMut.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-60">
+                <Send size={13} /> {sendMut.isPending ? 'Enviando...' : 'Enviar'}
+              </button>
+              {confirmDelete ? (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-gray-500">Excluir rascunho?</span>
+                  <button onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}
+                    className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600 disabled:opacity-60">
+                    {deleteMut.isPending ? '...' : 'Sim'}
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}
+                    className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50">
+                  <Trash2 size={13} /> Excluir
+                </button>
+              )}
+            </>
           )}
           {comm.schoolStatus !== 'CANCELLED' && (
-            <button onClick={() => cancelMut.mutate()} disabled={cancelMut.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50 disabled:opacity-60">
-              <X size={13} /> Cancelar
-            </button>
+            confirmCancel ? (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-gray-500">Cancelar comunicado?</span>
+                <button onClick={() => cancelMut.mutate()} disabled={cancelMut.isPending}
+                  className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600 disabled:opacity-60">
+                  {cancelMut.isPending ? '...' : 'Sim'}
+                </button>
+                <button onClick={() => setConfirmCancel(false)}
+                  className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmCancel(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 rounded-lg text-xs text-red-600 hover:bg-red-50">
+                <X size={13} /> Cancelar
+              </button>
+            )
           )}
         </div>
       </div>

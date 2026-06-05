@@ -235,12 +235,26 @@ export class CommunicationsService {
     });
   }
 
+  // ── Staff: Excluir rascunho permanentemente ────────────────────────────────
+
+  async deleteDraft(schoolId: string, commId: string) {
+    const comm = await prisma.communication.findFirst({ where: { id: commId, schoolId } });
+    if (!comm) throw { status: 404, code: 'COMM_NOT_FOUND', message: 'Comunicado não encontrado' };
+    if (comm.schoolStatus !== 'DRAFT') {
+      throw { status: 400, code: 'NOT_DRAFT', message: 'Apenas rascunhos podem ser excluídos permanentemente' };
+    }
+    await prisma.communication.delete({ where: { id: commId } });
+    return { ok: true };
+  }
+
   // ── Staff: Relatório de leitura ────────────────────────────────────────────
 
   async getReadReport(schoolId: string, commId: string) {
     const comm = await prisma.communication.findFirst({
       where: { id: commId, schoolId },
       include: {
+        author: { select: { id: true, name: true } },
+        cancelledByUser: { select: { id: true, name: true } },
         commClasses: {
           include: {
             class: {
@@ -348,6 +362,10 @@ export class CommunicationsService {
         requiresConfirmation: comm.requiresConfirmation,
         scope: comm.scope,
         commClasses: comm.commClasses.map((cc) => ({ id: cc.classId, name: (cc as unknown as { class: { name: string } }).class.name })),
+        createdAt: comm.createdAt,
+        author: comm.author ? { name: comm.author.name } : null,
+        cancelledAt: comm.cancelledAt ?? null,
+        cancelledByUser: comm.cancelledByUser ? { name: comm.cancelledByUser.name } : null,
       },
       stats: { total, receivedCount, viewedCount, confirmedCount },
       readRate: total > 0 ? Math.round((confirmedCount / total) * 100) : 0,

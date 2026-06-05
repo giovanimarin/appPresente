@@ -43,7 +43,7 @@ export default function StudentsPage() {
     if (guardianFilter === 'with') rows = rows.filter((s) => (s._count?.studentGuardians ?? 0) > 0);
     if (guardianFilter === 'without') rows = rows.filter((s) => (s._count?.studentGuardians ?? 0) === 0);
     return rows;
-  }, [data, search, classFilter]);
+  }, [data, search, classFilter, guardianFilter]);
 
   const [deleteError, setDeleteError] = useState('');
 

@@ -322,11 +322,12 @@ export class GuardiansService {
     const where: Record<string, unknown> = { schoolId };
     if (!query.includeInactive) where.active = true;
     if (query.search) {
+      const searchCpf = query.search.replace(/\D/g, '');
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
         { phone: { contains: query.search } },
         { email: { contains: query.search, mode: 'insensitive' } },
-        { cpf: { contains: query.search.replace(/\D/g, '') } },
+        ...(searchCpf ? [{ cpf: { contains: searchCpf } }] : []),
       ];
     }
     if (query.status === 'activated') where.activatedAt = { not: null };

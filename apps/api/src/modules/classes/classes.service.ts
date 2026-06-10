@@ -68,10 +68,10 @@ export class ClassesService {
 
   async createClass(schoolId: string, dto: CreateClassDto) {
     const duplicate = await prisma.class.findFirst({
-      where: { schoolId, name: { equals: dto.name, mode: 'insensitive' }, grade: dto.grade ?? null, year: dto.year ?? null },
+      where: { schoolId, name: { equals: dto.name, mode: 'insensitive' }, grade: dto.grade ?? null, year: dto.year ?? null, shift: dto.shift ?? null },
     });
     if (duplicate) {
-      throw { status: 409, code: 'CLASS_DUPLICATE', message: 'Já existe uma turma com este Nome, Série e Ano letivo' };
+      throw { status: 409, code: 'CLASS_DUPLICATE', message: 'Já existe uma turma com este Nome, Série, Ano letivo e Turno' };
     }
 
     if (dto.classRooms?.length) {
@@ -263,6 +263,33 @@ export class ClassesService {
     if (!cls) throw { status: 404, code: 'CLASS_NOT_FOUND', message: 'Turma não encontrada' };
     const teacher = await prisma.user.findFirst({ where: { id: teacherId, schoolId, role: 'TEACHER', active: true } });
     if (!teacher) throw { status: 404, code: 'TEACHER_NOT_FOUND', message: 'Professor não encontrado' };
+
+    if (isHomeroom && cls.shift) {
+      const conflictingShifts = cls.shift === 'INTEGRAL'
+        ? ['INTEGRAL', 'MATUTINO', 'VESPERTINO', 'NOTURNO']
+        : [cls.shift, 'INTEGRAL'];
+      const conflict = await prisma.classTeacher.findFirst({
+        where: {
+          teacherId,
+          isHomeroom: true,
+          classId: { not: classId },
+          class: { schoolId, active: true, shift: { in: conflictingShifts } },
+        },
+        include: { class: { select: { name: true, shift: true } } },
+      });
+      if (conflict) {
+        const SHIFT_LABELS: Record<string, string> = {
+          MATUTINO: 'Matutino', VESPERTINO: 'Vespertino', NOTURNO: 'Noturno', INTEGRAL: 'Integral',
+        };
+        const shiftLabel = SHIFT_LABELS[conflict.class.shift ?? ''] ?? conflict.class.shift;
+        throw {
+          status: 409,
+          code: 'TEACHER_HOMEROOM_CONFLICT',
+          message: `${teacher.name} já é professor(a) titular da turma "${conflict.class.name}" (${shiftLabel}). Um professor não pode ser titular em duas turmas no mesmo turno.`,
+        };
+      }
+    }
+
     return prisma.classTeacher.upsert({
       where: { classId_teacherId: { classId, teacherId } },
       create: { classId, teacherId, schoolId, subject, isHomeroom: isHomeroom ?? false },

@@ -511,17 +511,16 @@ export class PlatformService {
   async resetDirectorPassword(schoolId: string, userId: string) {
     const user = await prisma.user.findFirst({
       where: { id: userId, schoolId, role: 'ADMIN' },
-      include: { school: { select: { name: true } } },
     });
     if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
 
-    const token = randomUUID();
-    await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
-    const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
-    const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
-    await sendWelcomeEmail(user.email, user.name, user.school.name, firstAccessUrl);
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#!';
+    const newPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    return { ok: true, message: 'Link de primeiro acesso enviado para ' + user.email };
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash, firstAccess: true } });
+
+    return { ok: true, newPassword };
   }
 
   // ── Arquivar escola (soft delete) ─────────────────────────────────────────

@@ -518,7 +518,7 @@ export class PlatformService {
     const newPassword = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash, firstAccess: true } });
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 
     return { ok: true, newPassword };
   }

@@ -105,7 +105,7 @@ export default function UsersPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">Nenhum usuário encontrado</div>
         ) : filtered.map((user) => {
-          const isPending = user.active && !user.lastLoginAt && !user.email.endsWith('@apppresente.com.br');
+          const isPending = user.active && !user.lastLoginAt && user.email !== 'suporte@apppresente.com.br';
           return (
             <div
               key={user.id}

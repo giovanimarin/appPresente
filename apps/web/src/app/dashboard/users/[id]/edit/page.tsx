@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 import PhoneInput from '@/components/PhoneInput';
 import { ArrowLeft, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,8 +46,9 @@ export default function EditUserPage() {
     queryFn: () => usersApi.get(params.id).then((r) => r.data),
   });
 
-  // Se o usuário já fez login, não pode alterar e-mail/telefone/senha
-  const hasAccessed = !!(user as { lastLoginAt?: string } | undefined)?.lastLoginAt;
+  const isOwnProfile = getUser()?.id === params.id;
+  // Bloqueia e-mail/telefone/senha apenas quando editando OUTRO usuário que já fez login
+  const hasAccessed = !isOwnProfile && !!(user as { lastLoginAt?: string } | undefined)?.lastLoginAt;
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -160,13 +162,15 @@ export default function EditUserPage() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
-            <select {...register('role')}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white">
-              {ROLE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-          </div>
+          {!isOwnProfile && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
+              <select {...register('role')}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white">
+                {ROLE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
@@ -223,10 +227,12 @@ export default function EditUserPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <input type="checkbox" id="active" {...register('active')} className="rounded" />
-            <label htmlFor="active" className="text-sm text-gray-700 cursor-pointer">Usuário ativo</label>
-          </div>
+          {!isOwnProfile && (
+            <div className="flex items-center gap-2 pt-1">
+              <input type="checkbox" id="active" {...register('active')} className="rounded" />
+              <label htmlFor="active" className="text-sm text-gray-700 cursor-pointer">Usuário ativo</label>
+            </div>
+          )}
         </div>
 
         {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-700">{error}</p></div>}

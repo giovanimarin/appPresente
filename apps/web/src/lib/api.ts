@@ -113,6 +113,7 @@ export const studentsApi = {
   guardians: (id: string) => api.get(`/students/${id}/guardians`),
   linkGuardian: (id: string, data: unknown) => api.post(`/students/${id}/guardians`, data),
   unlinkGuardian: (id: string, guardianId: string) => api.delete(`/students/${id}/guardians/${guardianId}`),
+  updateGuardianLink: (id: string, guardianId: string, data: unknown) => api.patch(`/students/${id}/guardians/${guardianId}`, data),
   import: (rows: unknown[]) => api.post('/students/import', { rows }),
 };
 

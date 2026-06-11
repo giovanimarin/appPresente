@@ -122,16 +122,22 @@ export default function StudentsPage() {
             <div className={cn('w-9 h-9 rounded-full flex items-center justify-center font-medium text-sm flex-shrink-0', student.active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400')}>
               {student.name[0].toUpperCase()}
             </div>
-            <Link href={`/dashboard/students/${student.id}`} className="flex-1 min-w-0 hover:underline decoration-gray-300">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className={cn('font-medium text-sm truncate', student.active ? 'text-gray-900' : 'text-gray-400')}>{student.name}</p>
+                <Link href={`/dashboard/students/${student.id}`} className={cn('font-medium text-sm truncate hover:underline decoration-gray-300', student.active ? 'text-gray-900' : 'text-gray-400')}>
+                  {student.name}
+                </Link>
                 {!student.active && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">Desativado</span>}
               </div>
               <div className="flex gap-3 text-xs text-gray-500">
-                {student.class && <span>{student.class.name}{student.class.grade ? ` · ${student.class.grade}` : ''}</span>}
+                {student.class && (
+                  <Link href={`/dashboard/classes/${student.class.id}`} className="hover:underline decoration-gray-300">
+                    {student.class.name}{student.class.grade ? ` · ${student.class.grade}` : ''}
+                  </Link>
+                )}
                 {student.enrollmentCode && <span>Mat: {student.enrollmentCode}</span>}
               </div>
-            </Link>
+            </div>
             {(student._count?.studentGuardians ?? 0) > 0 ? (
               <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 flex-shrink-0">
                 <UserCheck size={12} /> {student._count!.studentGuardians} resp.

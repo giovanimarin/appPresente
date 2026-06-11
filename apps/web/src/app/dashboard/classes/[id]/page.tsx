@@ -451,13 +451,15 @@ export default function ClassDetailPage() {
             <div className="text-center py-10 text-gray-400 text-sm">Nenhum aluno nesta turma</div>
           ) : students?.map((student: Student) => (
             <div key={student.id} className="px-5 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-medium text-sm">
-                {student.name[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                {student.enrollmentCode && <p className="text-xs text-gray-400">Mat: {student.enrollmentCode}</p>}
-              </div>
+              <Link href={`/dashboard/students/${student.id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-70 transition-opacity">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-medium text-sm flex-shrink-0">
+                  {student.name[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{student.name}</p>
+                  {student.enrollmentCode && <p className="text-xs text-gray-400">Mat: {student.enrollmentCode}</p>}
+                </div>
+              </Link>
               <div className="flex items-center gap-1">
                 {student.studentGuardians.map((sg, i) => (
                   <div key={i} className="flex items-center" title={sg.guardian.name}>

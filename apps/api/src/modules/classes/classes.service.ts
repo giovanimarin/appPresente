@@ -438,4 +438,25 @@ export class ClassesService {
     await prisma.studentGuardian.deleteMany({ where: { studentId, guardianId } });
     return { success: true };
   }
+
+  async updateStudentGuardianLink(
+    schoolId: string,
+    studentId: string,
+    guardianId: string,
+    dto: { kinshipDegree?: string | null; isLegalGuardian?: boolean; isFinancialGuardian?: boolean; relationship?: string },
+  ) {
+    const student = await prisma.student.findFirst({ where: { id: studentId, schoolId } });
+    if (!student) throw { status: 404, code: 'STUDENT_NOT_FOUND', message: 'Aluno não encontrado' };
+    const link = await prisma.studentGuardian.findFirst({ where: { studentId, guardianId } });
+    if (!link) throw { status: 404, code: 'LINK_NOT_FOUND', message: 'Vínculo não encontrado' };
+    return prisma.studentGuardian.update({
+      where: { studentId_guardianId: { studentId, guardianId } },
+      data: {
+        ...(dto.kinshipDegree !== undefined ? { kinshipDegree: dto.kinshipDegree || null } : {}),
+        ...(dto.isLegalGuardian !== undefined ? { isLegalGuardian: dto.isLegalGuardian } : {}),
+        ...(dto.isFinancialGuardian !== undefined ? { isFinancialGuardian: dto.isFinancialGuardian } : {}),
+        ...(dto.relationship !== undefined ? { relationship: dto.relationship } : {}),
+      },
+    });
+  }
 }

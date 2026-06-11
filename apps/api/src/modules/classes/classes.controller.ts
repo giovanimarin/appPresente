@@ -128,6 +128,11 @@ export async function unlinkGuardianFromStudent(req: AuthRequest, res: Response,
   catch (e) { handle(e, res, next); }
 }
 
+export async function updateStudentGuardianLink(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try { res.json(await svc.updateStudentGuardianLink(req.user!.schoolId, req.params.id, req.params.guardianId, req.body)); }
+  catch (e) { handle(e, res, next); }
+}
+
 // ── Professores da turma ──────────────────────────────────────────────────
 
 export async function addClassTeacher(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

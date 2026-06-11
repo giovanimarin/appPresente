@@ -5,7 +5,7 @@ import { createStudentSchema, updateStudentSchema } from './classes.schemas';
 import {
   listStudents, getStudent, createStudent, updateStudent,
   archiveStudent, reactivateStudent, deleteStudentPermanent,
-  getStudentGuardians, linkGuardianToStudent, unlinkGuardianFromStudent, importStudents,
+  getStudentGuardians, linkGuardianToStudent, unlinkGuardianFromStudent, updateStudentGuardianLink, importStudents,
 } from './classes.controller';
 
 const router = Router();
@@ -21,6 +21,7 @@ router.post('/:id/reactivate', requireRoles('ADMIN', 'SECRETARY'), reactivateStu
 router.delete('/:id/permanent', requireRoles('ADMIN'), deleteStudentPermanent);
 router.get('/:id/guardians', getStudentGuardians);
 router.post('/:id/guardians', requireRoles('ADMIN', 'SECRETARY'), linkGuardianToStudent);
+router.patch('/:id/guardians/:guardianId', requireRoles('ADMIN', 'SECRETARY'), updateStudentGuardianLink);
 router.delete('/:id/guardians/:guardianId', requireRoles('ADMIN', 'SECRETARY'), unlinkGuardianFromStudent);
 
 export default router;

@@ -48,9 +48,9 @@ type NavGroup = {
 const navGroups: NavGroup[] = [
   {
     label: 'Painel',
-    roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'],
+    roles: ['ADMIN', 'SECRETARY'],
     items: [
-      { href: '/dashboard', icon: LayoutDashboard, label: 'Painel', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR', 'TEACHER'] },
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Painel', roles: ['ADMIN', 'SECRETARY'] },
     ],
   },
   {

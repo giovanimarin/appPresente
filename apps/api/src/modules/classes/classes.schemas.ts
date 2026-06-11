@@ -31,10 +31,13 @@ export const createStudentSchema = z.object({
   name: z.string().min(2).max(200),
   classId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid('classId inválido').optional()),
   enrollmentCode: z.string().max(50).optional(),
-  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(
+    (d) => new Date(d) <= new Date(),
+    { message: 'Data de nascimento não pode ser no futuro' },
+  ).optional(),
   gender: z.enum(['masculino', 'feminino', 'outro', 'nao_informado']).optional(),
   notes: z.string().optional(),
-  cpf: z.preprocess((v) => (v === '' ? undefined : v), z.string().length(11).optional()),
+  cpf: z.preprocess((v) => (v === '' ? undefined : v), z.string().length(11, 'CPF deve ter 11 dígitos')),
 });
 
 export const updateStudentSchema = createStudentSchema.partial().omit({ classId: true }).extend({

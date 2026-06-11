@@ -12,9 +12,13 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
   tio: 'Tio', tia: 'Tia', responsavel: 'Responsável', responsável: 'Responsável', outro: 'Outro',
 };
 
+const KINSHIP_OPTIONS = ['Pai', 'Mãe', 'Avô/Avó', 'Tio/Tia', 'Outro'];
+
 type StudentLink = {
   relationship: string;
   kinshipDegree?: string | null;
+  isLegalGuardian: boolean;
+  isFinancialGuardian: boolean;
   status: string;
   student: { id: string; name: string; class: { id: string; name: string; grade: string } };
 };
@@ -40,12 +44,22 @@ export default function GuardianDetailPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<StudentOption | null>(null);
   const [kinshipDegree, setKinshipDegree] = useState('');
+  const [isLegal, setIsLegal] = useState(false);
+  const [isFinancial, setIsFinancial] = useState(false);
 
   // Criar novo aluno
   const [newName, setNewName] = useState('');
   const [newClassId, setNewClassId] = useState('');
   const [newEnrollment, setNewEnrollment] = useState('');
   const [newKinship, setNewKinship] = useState('');
+  const [newIsLegal, setNewIsLegal] = useState(false);
+  const [newIsFinancial, setNewIsFinancial] = useState(false);
+
+  // Editar vínculo existente
+  const [editingLinkStudentId, setEditingLinkStudentId] = useState<string | null>(null);
+  const [editLinkKinship, setEditLinkKinship] = useState('');
+  const [editLinkIsLegal, setEditLinkIsLegal] = useState(false);
+  const [editLinkIsFinancial, setEditLinkIsFinancial] = useState(false);
 
   const { data: guardian, isLoading } = useQuery({
     queryKey: ['guardian', params.id],
@@ -91,10 +105,21 @@ export default function GuardianDetailPage() {
     setStudentSearch('');
     setSelectedStudent(null);
     setKinshipDegree('');
+    setIsLegal(false);
+    setIsFinancial(false);
     setNewName('');
     setNewClassId('');
     setNewEnrollment('');
     setNewKinship('');
+    setNewIsLegal(false);
+    setNewIsFinancial(false);
+  }
+
+  function openEditLink(sg: StudentLink) {
+    setEditingLinkStudentId(sg.student.id);
+    setEditLinkKinship(sg.kinshipDegree ?? '');
+    setEditLinkIsLegal(sg.isLegalGuardian);
+    setEditLinkIsFinancial(sg.isFinancialGuardian);
   }
 
   const updateMut = useMutation({
@@ -116,6 +141,8 @@ export default function GuardianDetailPage() {
       guardianId: params.id,
       relationship: 'responsavel',
       kinshipDegree: kinshipDegree || undefined,
+      isLegalGuardian: isLegal,
+      isFinancialGuardian: isFinancial,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['guardian', params.id] });
@@ -135,12 +162,26 @@ export default function GuardianDetailPage() {
         guardianId: params.id,
         relationship: 'responsavel',
         kinshipDegree: newKinship || undefined,
+        isLegalGuardian: newIsLegal,
+        isFinancialGuardian: newIsFinancial,
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['guardian', params.id] });
       qc.invalidateQueries({ queryKey: ['students'] });
       resetAddStudent();
+    },
+  });
+
+  const updateLinkMut = useMutation({
+    mutationFn: (studentId: string) => studentsApi.updateGuardianLink(studentId, params.id, {
+      kinshipDegree: editLinkKinship || null,
+      isLegalGuardian: editLinkIsLegal,
+      isFinancialGuardian: editLinkIsFinancial,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['guardian', params.id] });
+      setEditingLinkStudentId(null);
     },
   });
 
@@ -330,17 +371,25 @@ export default function GuardianDetailPage() {
                     )}
                   </div>
                 )}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
-                  <select value={kinshipDegree} onChange={(e) => setKinshipDegree(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                    <option value="">Não informado</option>
-                    <option value="Pai">Pai</option>
-                    <option value="Mãe">Mãe</option>
-                    <option value="Avô/Avó">Avô/Avó</option>
-                    <option value="Tio/Tia">Tio/Tia</option>
-                    <option value="Outro">Outro</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
+                    <select value={kinshipDegree} onChange={(e) => setKinshipDegree(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                      <option value="">Não informado</option>
+                      {KINSHIP_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col justify-end gap-2 pb-1">
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={isLegal} onChange={(e) => setIsLegal(e.target.checked)} className="rounded" />
+                      Responsável legal
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={isFinancial} onChange={(e) => setIsFinancial(e.target.checked)} className="rounded" />
+                      Responsável financeiro
+                    </label>
+                  </div>
                 </div>
                 {linkStudentMut.isError && (
                   <p className="text-xs text-red-600">{(linkStudentMut.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erro ao vincular aluno'}</p>
@@ -379,17 +428,23 @@ export default function GuardianDetailPage() {
                     <input value={newEnrollment} onChange={(e) => setNewEnrollment(e.target.value)} placeholder="Opcional"
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none" />
                   </div>
-                  <div className="col-span-2">
+                  <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
                     <select value={newKinship} onChange={(e) => setNewKinship(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
                       <option value="">Não informado</option>
-                      <option value="Pai">Pai</option>
-                      <option value="Mãe">Mãe</option>
-                      <option value="Avô/Avó">Avô/Avó</option>
-                      <option value="Tio/Tia">Tio/Tia</option>
-                      <option value="Outro">Outro</option>
+                      {KINSHIP_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
+                  </div>
+                  <div className="flex flex-col justify-end gap-2 pb-1">
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={newIsLegal} onChange={(e) => setNewIsLegal(e.target.checked)} className="rounded" />
+                      Responsável legal
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={newIsFinancial} onChange={(e) => setNewIsFinancial(e.target.checked)} className="rounded" />
+                      Responsável financeiro
+                    </label>
                   </div>
                 </div>
                 {createAndLinkMut.isError && (
@@ -411,41 +466,94 @@ export default function GuardianDetailPage() {
           {studentLinks.length === 0 ? (
             <div className="text-center py-10 text-gray-400 text-sm">Nenhum aluno vinculado</div>
           ) : studentLinks.map((sg) => (
-            <div key={sg.student.id} className="px-5 py-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium text-sm flex-shrink-0">
-                {sg.student.name[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <a href={`/dashboard/students/${sg.student.id}`} className="text-sm font-medium text-gray-900 hover:text-primary-600 hover:underline">
-                    {sg.student.name}
-                  </a>
-                  {(sg.kinshipDegree || sg.relationship) && (
-                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
-                      {sg.kinshipDegree || RELATIONSHIP_LABELS[sg.relationship?.toLowerCase()] || sg.relationship}
+            <div key={sg.student.id} className="px-5 py-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium text-sm flex-shrink-0">
+                  {sg.student.name[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <a href={`/dashboard/students/${sg.student.id}`} className="text-sm font-medium text-gray-900 hover:text-primary-600 hover:underline">
+                      {sg.student.name}
+                    </a>
+                    {(sg.kinshipDegree || sg.relationship) && (
+                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                        {sg.kinshipDegree || RELATIONSHIP_LABELS[sg.relationship?.toLowerCase()] || sg.relationship}
+                      </span>
+                    )}
+                    {sg.isLegalGuardian && (
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">Legal</span>
+                    )}
+                    {sg.isFinancialGuardian && (
+                      <span className="text-xs px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded">Financeiro</span>
+                    )}
+                    <span className={cn('text-xs px-1.5 py-0.5 rounded', sg.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700')}>
+                      {sg.status === 'ACTIVE' ? 'Ativo' : 'Pendente'}
                     </span>
-                  )}
-                  <span className={cn('text-xs px-1.5 py-0.5 rounded', sg.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700')}>
-                    {sg.status === 'ACTIVE' ? 'Ativo' : 'Pendente'}
-                  </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
+                    <GraduationCap size={11} />
+                    <span>{sg.student.class?.name} · {sg.student.class?.grade}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
-                  <GraduationCap size={11} />
-                  <span>{sg.student.class?.name} · {sg.student.class?.grade}</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {editingLinkStudentId !== sg.student.id && confirmUnlinkStudentId !== sg.student.id && (
+                    <button onClick={() => openEditLink(sg)} className="p-1.5 text-gray-300 hover:text-primary-500 rounded-lg hover:bg-primary-50" title="Editar vínculo">
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                  {confirmUnlinkStudentId === sg.student.id ? (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-gray-500">Desvincular?</span>
+                      <button onClick={() => unlinkStudentMut.mutate(sg.student.id)}
+                        className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
+                      <button onClick={() => setConfirmUnlinkStudentId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+                    </div>
+                  ) : (
+                    editingLinkStudentId !== sg.student.id && (
+                      <button onClick={() => setConfirmUnlinkStudentId(sg.student.id)} disabled={unlinkStudentMut.isPending}
+                        className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50" title="Desvincular">
+                        <X size={14} />
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
-              {confirmUnlinkStudentId === sg.student.id ? (
-                <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
-                  <span className="text-gray-500">Desvincular?</span>
-                  <button onClick={() => unlinkStudentMut.mutate(sg.student.id)}
-                    className="px-2 py-1 bg-red-500 text-white rounded font-medium hover:bg-red-600">Sim</button>
-                  <button onClick={() => setConfirmUnlinkStudentId(null)} className="px-2 py-1 border border-gray-200 text-gray-500 rounded hover:bg-gray-50">Não</button>
+
+              {/* Edição inline do vínculo */}
+              {editingLinkStudentId === sg.student.id && (
+                <div className="ml-12 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Grau de parentesco</label>
+                      <select value={editLinkKinship} onChange={(e) => setEditLinkKinship(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                        <option value="">Não informado</option>
+                        {KINSHIP_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex flex-col justify-end gap-2 pb-1">
+                      <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                        <input type="checkbox" checked={editLinkIsLegal} onChange={(e) => setEditLinkIsLegal(e.target.checked)} className="rounded" />
+                        Responsável legal
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                        <input type="checkbox" checked={editLinkIsFinancial} onChange={(e) => setEditLinkIsFinancial(e.target.checked)} className="rounded" />
+                        Responsável financeiro
+                      </label>
+                    </div>
+                  </div>
+                  {updateLinkMut.isError && (
+                    <p className="text-xs text-red-600">{(updateLinkMut.error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Erro ao atualizar vínculo'}</p>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setEditingLinkStudentId(null)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button onClick={() => updateLinkMut.mutate(sg.student.id)} disabled={updateLinkMut.isPending}
+                      className="px-4 py-1.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-60">
+                      {updateLinkMut.isPending ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <button onClick={() => setConfirmUnlinkStudentId(sg.student.id)} disabled={unlinkStudentMut.isPending}
-                  className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 flex-shrink-0" title="Desvincular">
-                  <X size={14} />
-                </button>
               )}
             </div>
           ))}

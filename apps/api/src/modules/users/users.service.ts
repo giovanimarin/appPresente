@@ -140,7 +140,11 @@ export class UsersService {
     await redis.set(redisKeys.firstAccess(token), user.id, 'EX', 72 * 60 * 60);
     const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] ?? 'http://localhost:3000';
     const firstAccessUrl = `${frontendUrl}/primeiro-acesso?token=${token}`;
-    await sendWelcomeEmail(user.email, user.name, user.school.name, firstAccessUrl);
+    try {
+      await sendWelcomeEmail(user.email, user.name, user.school.name, firstAccessUrl);
+    } catch (e) {
+      console.error('[users] Falha ao reenviar e-mail de convite:', e);
+    }
 
     return { ok: true };
   }

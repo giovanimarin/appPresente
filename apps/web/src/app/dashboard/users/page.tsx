@@ -56,12 +56,14 @@ export default function UsersPage() {
       setDeleteError(e.response?.data?.error ?? 'Erro ao excluir usuário.');
     },
   });
+  const [resendError, setResendError] = useState('');
   const resendMut = useMutation({
     mutationFn: (id: string) => usersApi.resendInvite(id),
     onSuccess: (_, id) => {
       setResentId(id);
       setTimeout(() => setResentId(null), 3000);
     },
+    onError: () => setResendError('Erro ao reenviar convite. Tente novamente.'),
   });
 
   return (
@@ -70,6 +72,12 @@ export default function UsersPage() {
         <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700">{deleteError}</p>
           <button onClick={() => setDeleteError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
+      {resendError && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-700">{resendError}</p>
+          <button onClick={() => setResendError('')} className="ml-3 text-red-400 hover:text-red-600 text-xs">✕</button>
         </div>
       )}
       <div className="flex items-center justify-between">

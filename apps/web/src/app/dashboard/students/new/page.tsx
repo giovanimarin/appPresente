@@ -52,7 +52,7 @@ export default function NewStudentPage() {
     else if (digits.length > 6) masked = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
     else if (digits.length > 3) masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
     setCpfDisplay(masked);
-    setValue('cpf', digits || undefined);
+    setValue('cpf', digits);
   }
 
   async function onSubmit(data: FormData) {

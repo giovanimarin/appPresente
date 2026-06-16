@@ -125,6 +125,9 @@ export class UsersService {
     }
     const user = await prisma.user.findFirst({ where: { id: userId, schoolId } });
     if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
+    if (user.email === 'suporte@apppresente.com.br') {
+      throw { status: 403, code: 'PROTECTED_USER', message: 'Este usuário não pode ser desativado' };
+    }
     return prisma.user.update({ where: { id: userId }, data: { active }, select: { id: true, active: true } });
   }
 
@@ -155,6 +158,9 @@ export class UsersService {
     }
     const user = await prisma.user.findFirst({ where: { id: userId, schoolId } });
     if (!user) throw { status: 404, code: 'USER_NOT_FOUND', message: 'Usuário não encontrado' };
+    if (user.email === 'suporte@apppresente.com.br') {
+      throw { status: 403, code: 'PROTECTED_USER', message: 'Este usuário não pode ser excluído' };
+    }
 
     const classCount = await prisma.classTeacher.count({ where: { teacherId: userId } });
     if (classCount > 0) {

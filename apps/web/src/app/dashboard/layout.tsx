@@ -21,20 +21,27 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 // Ordered from most specific to least specific (longer prefix takes precedence)
-const ROUTE_PERMISSIONS: Array<{ prefix: string; roles: Role[] }> = [
-  { prefix: '/dashboard/users',                   roles: ['ADMIN'] },
-  { prefix: '/dashboard/settings',                roles: ['ADMIN'] },
-  { prefix: '/dashboard/rooms',                   roles: ['ADMIN', 'SECRETARY'] },
-  { prefix: '/dashboard/communications/requests', roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
-  { prefix: '/dashboard/forms',                   roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+const ROUTE_PERMISSIONS: Array<{ prefix: string; exact?: boolean; roles: Role[] }> = [
+  { prefix: '/dashboard',                          exact: true, roles: ['ADMIN', 'SECRETARY'] },
+  { prefix: '/dashboard/users',                    roles: ['ADMIN'] },
+  { prefix: '/dashboard/settings',                 roles: ['ADMIN'] },
+  { prefix: '/dashboard/rooms',                    roles: ['ADMIN', 'SECRETARY'] },
+  { prefix: '/dashboard/communications/requests',  roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
+  { prefix: '/dashboard/forms',                    roles: ['ADMIN', 'SECRETARY', 'COORDINATOR'] },
 ];
+
+const ROLE_DEFAULT_ROUTE: Record<Role, string> = {
+  ADMIN: '/dashboard',
+  SECRETARY: '/dashboard',
+  COORDINATOR: '/dashboard/classes',
+  TEACHER: '/dashboard/classes',
+};
 
 function hasRouteAccess(pathname: string, role: Role): boolean {
   const sorted = [...ROUTE_PERMISSIONS].sort((a, b) => b.prefix.length - a.prefix.length);
-  for (const { prefix, roles } of sorted) {
-    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
-      return roles.includes(role);
-    }
+  for (const { prefix, exact, roles } of sorted) {
+    const matches = exact ? pathname === prefix : (pathname === prefix || pathname.startsWith(prefix + '/'));
+    if (matches) return roles.includes(role);
   }
   return true;
 }
@@ -93,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const currentUser = getUser();
     const role = (currentUser?.role ?? 'TEACHER') as Role;
     if (!hasRouteAccess(pathname, role)) {
-      router.replace('/dashboard');
+      router.replace(ROLE_DEFAULT_ROUTE[role]);
       return;
     }
     setUser(currentUser);

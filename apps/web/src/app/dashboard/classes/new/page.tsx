@@ -52,7 +52,7 @@ export default function NewClassPage() {
         shift: data.shift,
         coordinatorId: data.coordinatorId,
       });
-      await qc.invalidateQueries({ queryKey: ['classes'] });
+      await qc.refetchQueries({ queryKey: ['classes'], type: 'all' });
       router.push(`/dashboard/classes/${res.data.id}`);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };

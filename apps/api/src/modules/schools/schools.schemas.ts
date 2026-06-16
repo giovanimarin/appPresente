@@ -33,7 +33,7 @@ export const updateSchoolSchema = z.object({
   state: z.preprocess(emptyToUndefined, z.string().length(2).optional()),
   phone: z.preprocess(emptyToUndefined, z.string().max(20).optional()),
   email: z.preprocess(emptyToUndefined, z.string().email().max(200).optional()),
-  logoUrl: z.preprocess(emptyToUndefined, z.string().optional()),
+  logoUrl: z.preprocess((v) => (v === '' ? undefined : v), z.string().nullable().optional()),
 });
 
 export type RegisterSchoolDto = z.infer<typeof registerSchoolSchema>;

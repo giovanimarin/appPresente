@@ -132,7 +132,7 @@ export default function SettingsPage() {
   }
 
   async function handleRemoveLogo() {
-    await schoolsApi.update({ logoUrl: '' });
+    await schoolsApi.update({ logoUrl: null });
     setLogoPreview(null);
     qc.invalidateQueries({ queryKey: ['school'] });
   }
